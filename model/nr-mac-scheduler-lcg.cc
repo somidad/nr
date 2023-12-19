@@ -86,7 +86,7 @@ NrMacSchedulerLCG::UpdateInfo(const NrMacSchedSapProvider::SchedDlRlcBufferReqPa
 }
 
 void
-NrMacSchedulerLCG::UpdateInfo(uint32_t lcgQueueSize)
+NrMacSchedulerLCG::UpdateInfo(uint32_t lcgQueueSize, bool srActive)
 {
     NS_LOG_FUNCTION(this);
     NS_ABORT_IF(m_lcMap.size() > 1);
@@ -95,6 +95,7 @@ NrMacSchedulerLCG::UpdateInfo(uint32_t lcgQueueSize)
     for (auto& lc : m_lcMap)
     {
         lc.second->m_rlcTransmissionQueueSize = lcIdPart;
+        lc.second->m_srActive = srActive;
     }
 }
 
@@ -177,6 +178,18 @@ NrMacSchedulerLCG::AssignedData(uint8_t lcId, uint32_t size, std::string type)
                                   << " before: RLC PDU =" << m_lcMap.at(lcId)->m_rlcStatusPduSize
                                   << ", RLC RX=" << m_lcMap.at(lcId)->m_rlcRetransmissionQueueSize
                                   << ", RLC TX=" << m_lcMap.at(lcId)->m_rlcTransmissionQueueSize);
+
+    if (m_lcMap.at(lcId)->m_srActive)
+    {
+        m_lcMap.at(lcId)->m_rlcTransmissionQueueSize = 0;
+        m_lcMap.at(lcId)->m_srActive = false;
+
+        NS_LOG_INFO("Assigned " << size << " bytes for SR to lcId: " << static_cast<uint32_t>(lcId)
+                                << " after: RLC PDU=" << m_lcMap.at(lcId)->m_rlcStatusPduSize
+                                << ", RLC RX=" << m_lcMap.at(lcId)->m_rlcRetransmissionQueueSize
+                                << ", RLC TX=" << m_lcMap.at(lcId)->m_rlcTransmissionQueueSize);
+        return;
+    }
 
     if ((m_lcMap.at(lcId)->m_rlcStatusPduSize > 0) &&
         (size >= m_lcMap.at(lcId)->m_rlcStatusPduSize))
