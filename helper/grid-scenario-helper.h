@@ -16,52 +16,51 @@ namespace ns3
 {
 
 /**
- * @brief The GridScenarioHelper class
+ * @brief Helper to place Base Stations and User Terminals in a grid-like scenario.
  *
- * TODO: Documentation, tests
+ * Set the Base Stations'(gNB) locations in a grid-like pattern. User Terminals are then spread over
+ * it. SetBsDistance(horizontal_distance, verticle_distance) specifies the spacing between Base
+ * Stations in meters. The number of rows and columns where the Base Stations will be placed in a
+ * grid-like scenario are set using SetRows(r) and SetColumns(c). SetGridSize(x,y) sets the overall
+ * dimensions in meters of grid-like scenario where Base Stations and User Terminals both will be
+ * present. The starting position of grid in meters is set using SetBsPositionOffset function.
  */
 class GridScenarioHelper : public NodeDistributionScenarioInterface
 {
   public:
     /**
-     * \brief GridScenarioHelper
+     * \brief Default constructor.
      */
     GridScenarioHelper();
 
     /**
-     * \brief ~GridScenarioHelper
+     * \brief Default destructor.
      */
     ~GridScenarioHelper() override;
 
     /**
-     * @brief SetHorizontalBsDistance
+     * @brief Set a fixed horizontal and vertical (x axis, y axis) distance (meters) between Base
+     * Stations.
      */
-    void SetHorizontalBsDistance(double d);
+    void SetBsDistance(double hDistance, double vDistance);
 
     /**
-     * @brief SetVerticalBsDistance
-     */
-    void SetVerticalBsDistance(double d);
-
-    /**
-     * @brief SetRows
+     * @brief Set the amount of rows (y axis) for the placement of Base Stations.
      */
     void SetRows(uint32_t r);
 
     /**
-     * @brief SetColumns
+     * @brief Set the amount of columns (x axis) for the placement of Base Stations.
      */
     void SetColumns(uint32_t c);
 
     /**
      * \brief Set starting position of the grid
-     * \param [in] initialPos The starting position vector (x, y, z), where z is ignored.
+     * \param [in] initialPos The starting position vector (x, y, z) that is treated as offset for.
      */
-    void SetStartingPosition(const Vector& initialPos);
+    void SetBsPositionOffset(const Vector& initialPos);
 
-    void SetScenarioLength(double m);
-
-    void SetScenarioHeight(double m);
+    void SetGridSize(double m, double n); // length m, width n
 
     // inherited
     void CreateScenario() override;
@@ -83,7 +82,7 @@ class GridScenarioHelper : public NodeDistributionScenarioInterface
     uint32_t m_columns{0};               //!< Grid columns
     Vector m_initialPos;                 //!< Initial Position
     double m_length{0};                  //!< Scenario length
-    double m_height{0};                  //!< Scenario height
+    double m_width{0};                   //!< Scenario width
     Ptr<UniformRandomVariable> m_x;      //!< Random variable for X coordinate
     Ptr<UniformRandomVariable> m_y;      //!< Random variable for Y coordinate
 };
