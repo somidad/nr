@@ -135,16 +135,16 @@ apt-get install libeigen3-dev
 ```
 
 ## For MacOS users:
-Install libccd (it provides 'semaphore.h' header file).
+Install libccd (it provides `semaphore.h` header file).
 ```
 brew install libccd
 ```
-Install sqlite (enables optional examples 'lena-lte-comparison',
-'cttc-nr-3gpp-calibration' and 'cttc-realistic-beamforming'):
+Install sqlite (enables optional examples `lena-lte-comparison`,
+`cttc-nr-3gpp-calibration` and `cttc-realistic-beamforming`):
 ```
 brew install sqlite
 ```
-Install eigen3 ('enables optional MIMO features'):
+Install eigen3 (enables optional MIMO features):
 ```
 brew install eigen
 ```
