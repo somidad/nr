@@ -59,7 +59,7 @@ In alphabetical order:
 - Sandra Lagen
 - Natale Patriciello
 
-Inspired by [mmWave module by NYU/UniPD](https://github.com/nyuwireless-unipd/ns3-mmwave)
+Inspired by : [mmWave module by NYU/UniPD](https://github.com/nyuwireless-unipd/ns3-mmwave)
 
 ## Contributing to 5G-LENA
 
