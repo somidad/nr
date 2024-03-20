@@ -1,6 +1,4 @@
-/* -*-  Mode: C++; c-file-style: "gnu"; indent-tabs-mode:nil; -*- */
-
-// Copyright (c) 2019 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
+// Copyright (c) 2023 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
 //
 // SPDX-License-Identifier: GPL-2.0-only
 
@@ -32,10 +30,11 @@ GridScenarioHelper::~GridScenarioHelper()
 }
 
 void
-GridScenarioHelper::SetBsDistance(double hDistance, double vDistance){
+GridScenarioHelper::SetBsDistance(double hDistance, double vDistance)
+{
     m_horizontalBsDistance = hDistance;
 
-    m_verticalBsDistance = vDistance;    
+    m_verticalBsDistance = vDistance;
 }
 
 void
@@ -56,14 +55,13 @@ GridScenarioHelper::SetBsPositionOffset(const Vector& initialPos)
     m_initialPos = initialPos;
 }
 
-void 
-GridScenarioHelper::SetGridSize(double maxDistanceX, double maxDistanceY){
-    
+void
+GridScenarioHelper::SetGnbCoverage(double maxDistanceX, double maxDistanceY)
+{
     m_maxDistanceX = maxDistanceX;
 
     m_maxDistanceY = maxDistanceY;
 }
-
 
 void
 GridScenarioHelper::CreateScenario()
