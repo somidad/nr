@@ -57,11 +57,21 @@ class GridScenarioHelper : public NodeDistributionScenarioInterface
      * \brief Set starting position of the grid
      * \param [in] initialPos The starting position vector (x, y, z), where z is ignored.
      */
-    void SetStartingPosition(const Vector& initialPos);
+    void SetBsPositionOffset(const Vector& initialPos);
 
-    void SetScenarioLength(double m);
+    /**
+     * \brief Set the boundaries for the grid
+     * \param maxDistanceX The maximum boundary for the grid on the X-axis.
+     * \param maxDistanceY the maximum boundary for the grid on the Y-axis.
+     */
+    void SetGridSize(double maxDistanceX, double maxDistanceY);
 
-    void SetScenarioHeight(double m);
+    /**
+     * \brief Set the boundaries for the grid
+     * \param hDistance The horizontal distance between each two gNBs.
+     * \param vDistance The vertical distance between each two gNBs.
+     */
+    void SetBsDistance(double hDistance, double vDistance);
 
     // inherited
     void CreateScenario() override;
@@ -82,8 +92,8 @@ class GridScenarioHelper : public NodeDistributionScenarioInterface
     uint32_t m_rows{0};                  //!< Grid rows
     uint32_t m_columns{0};               //!< Grid columns
     Vector m_initialPos;                 //!< Initial Position
-    double m_length{0};                  //!< Scenario length
-    double m_height{0};                  //!< Scenario height
+    double m_maxDistanceX{0};                  //!< Max Scenario length
+    double m_maxDistanceY{0};                  //!< Max Scenario width
     Ptr<UniformRandomVariable> m_x;      //!< Random variable for X coordinate
     Ptr<UniformRandomVariable> m_y;      //!< Random variable for Y coordinate
 };
