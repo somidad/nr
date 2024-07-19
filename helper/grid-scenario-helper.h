@@ -18,13 +18,22 @@ namespace ns3
 /**
  * @brief The GridScenarioHelper class
  *
- * TODO: Documentation, tests
+ * The grid is structured as follows:
+ *
+ * initialPos => gNB1----m_horizontalBsDistance----gNB2------------------------------gNB3
+ *                |                                  |                                  |
+ *                |                        m_verticalBsDistance                         |
+ *                |                                  |                                  |
+ *               gNB4------------------------------gNB5------------------------------gNB6
+ *
+   In the above topology, there are 2 rows and 3 columns.
  */
 class GridScenarioHelper : public NodeDistributionScenarioInterface
 {
   public:
     /**
      * \brief GridScenarioHelper
+     * \brief A helper to place gNBs and User Terminals on a grid.
      */
     GridScenarioHelper();
 
@@ -32,24 +41,15 @@ class GridScenarioHelper : public NodeDistributionScenarioInterface
      * \brief ~GridScenarioHelper
      */
     ~GridScenarioHelper() override;
-
-    /**
-     * @brief SetHorizontalBsDistance
-     */
-    void SetHorizontalBsDistance(double d);
-
-    /**
-     * @brief SetVerticalBsDistance
-     */
-    void SetVerticalBsDistance(double d);
-
     /**
      * @brief SetRows
+     * \param r number of rows of the grid
      */
     void SetRows(uint32_t r);
 
     /**
      * @brief SetColumns
+     * \param c number of columns of the grid
      */
     void SetColumns(uint32_t c);
 
@@ -57,11 +57,21 @@ class GridScenarioHelper : public NodeDistributionScenarioInterface
      * \brief Set starting position of the grid
      * \param [in] initialPos The starting position vector (x, y, z), where z is ignored.
      */
-    void SetStartingPosition(const Vector& initialPos);
+    void SetBsPositionOffset(const Vector& initialPos);
 
-    void SetScenarioLength(double m);
+    /**
+     * \brief Set the boundaries for the grid
+     * \param maxDistanceX The maximum distance (meters) UTs can be away from the gNB on the X-axis.
+     * \param maxDistanceY the maximum distance (meters) UTs can be away from the gNB on the Y-axis.
+     */
+    void SetGnbCoverage(double maxDistanceX, double maxDistanceY);
 
-    void SetScenarioHeight(double m);
+    /**
+     * \brief Set the boundaries for the grid
+     * \param hDistance The horizontal distance (meters) between each two gNBs.
+     * \param vDistance The vertical distance (meters) between each two gNBs.
+     */
+    void SetBsDistance(double hDistance, double vDistance);
 
     // inherited
     void CreateScenario() override;
@@ -81,11 +91,13 @@ class GridScenarioHelper : public NodeDistributionScenarioInterface
     double m_horizontalBsDistance{-1.0}; //!< Distance between gnb
     uint32_t m_rows{0};                  //!< Grid rows
     uint32_t m_columns{0};               //!< Grid columns
-    Vector m_initialPos;                 //!< Initial Position
-    double m_length{0};                  //!< Scenario length
-    double m_height{0};                  //!< Scenario height
-    Ptr<UniformRandomVariable> m_x;      //!< Random variable for X coordinate
-    Ptr<UniformRandomVariable> m_y;      //!< Random variable for Y coordinate
+    Vector m_initialPos; //!< Initial Position from where the grid starts placing gNBs
+    double m_maxDistanceX{
+        0}; //!< The maximum distance (meters) UTs can be away from the gNB on the X-axis.
+    double m_maxDistanceY{
+        0}; //!< The maximum distance (meters) UTs can be away from the gNB on the Y-axis.
+    Ptr<UniformRandomVariable> m_x; //!< Random variable for X coordinate
+    Ptr<UniformRandomVariable> m_y; //!< Random variable for Y coordinate
 };
 
 } // namespace ns3

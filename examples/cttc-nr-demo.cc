@@ -205,16 +205,15 @@ main(int argc, char* argv[])
     gridScenario.SetRows(1);
     gridScenario.SetColumns(gNbNum);
     // All units below are in meters
-    gridScenario.SetHorizontalBsDistance(10.0);
-    gridScenario.SetVerticalBsDistance(10.0);
+    gridScenario.SetBsDistance(10.0, 10.0);
     gridScenario.SetBsHeight(10);
     gridScenario.SetUtHeight(1.5);
     // must be set before BS number
     gridScenario.SetSectorization(GridScenarioHelper::SINGLE);
     gridScenario.SetBsNumber(gNbNum);
     gridScenario.SetUtNumber(ueNumPergNb * gNbNum);
-    gridScenario.SetScenarioHeight(3); // Create a 3x3 scenario where the UE will
-    gridScenario.SetScenarioLength(3); // be distributed.
+    gridScenario.SetGnbCoverage(3.0,
+                                3.0); // Create a 3x3 scenario where the UE will be distributed.
     randomStream += gridScenario.AssignStreams(randomStream);
     gridScenario.CreateScenario();
 
