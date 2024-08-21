@@ -162,8 +162,8 @@ NrAmc::GetPayloadSize(uint8_t mcs, uint8_t rank, uint32_t nprb) const
                                         m_emMode);
 }
 
-uint8_t
-NrAmc::CreateCqiFeedbackWbTdma(const SpectrumValue& sinr, uint8_t& mcs) const
+std::pair<uint8_t, uint8_t>
+NrAmc::CreateCqiFeedbackWbTdma(const SpectrumValue& sinr) const
 {
     NS_LOG_FUNCTION(this);
 
@@ -171,6 +171,7 @@ NrAmc::CreateCqiFeedbackWbTdma(const SpectrumValue& sinr, uint8_t& mcs) const
 
     // std::vector<int> cqi;
     uint8_t cqi = 0;
+    uint8_t mcs = 0;
     double seAvg = 0;
 
     Values::const_iterator it;
@@ -271,7 +272,7 @@ NrAmc::CreateCqiFeedbackWbTdma(const SpectrumValue& sinr, uint8_t& mcs) const
         }
         NS_LOG_DEBUG(this << "\t MCS " << (uint16_t)mcs << "-> CQI " << cqi);
     }
-    return cqi;
+    return std::make_pair(cqi, mcs);
 }
 
 uint8_t

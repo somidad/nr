@@ -1399,8 +1399,7 @@ uint8_t
 NrUePhy::ComputeCqi(const SpectrumValue& sinr)
 {
     NS_LOG_FUNCTION(this);
-    uint8_t mcs; // it is initialized by AMC in the following call
-    uint8_t wbCqi = m_amc->CreateCqiFeedbackWbTdma(sinr, mcs);
+    auto [wbCqi, mcs] = m_amc->CreateCqiFeedbackWbTdma(sinr);
     return wbCqi;
 }
 
