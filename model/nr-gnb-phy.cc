@@ -1578,7 +1578,6 @@ NrGnbPhy::GenerateDataCqiReport(const SpectrumValue& sinr)
 
     Values::const_iterator it;
     NrMacSchedSapProvider::SchedUlCqiInfoReqParameters ulcqi;
-    ulcqi.m_ulCqi.m_type = UlCqiInfo::PUSCH;
     for (it = sinr.ConstValuesBegin(); it != sinr.ConstValuesEnd(); it++)
     {
         //   double sinrdb = 10 * std::log10 ((*it));
@@ -1586,7 +1585,7 @@ NrGnbPhy::GenerateDataCqiReport(const SpectrumValue& sinr)
         // convert from double to fixed point notaltion Sxxxxxxxxxxx.xxx
         //   int16_t sinrFp = LteFfConverter::double2fpS11dot3 (sinrdb);
         ulcqi.m_ulCqi.m_sinr.push_back(
-            *it); // will be processed by NrMacSchedulerCQIManagement::UlSBCQIReported, it will look
+            *it); // will be processed by NrMacSchedulerCQIManagement::UlCQIReported, it will look
                   // into a map of assignment
     }
 

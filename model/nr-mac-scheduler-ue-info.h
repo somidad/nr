@@ -220,14 +220,6 @@ class NrMacSchedulerUeInfo
      */
     struct CqiInfo
     {
-        /**
-         * \brief Type of CQI
-         */
-        enum CqiType
-        {
-            WB,          //!< Wide-band
-            SB           //!< Sub-band
-        } m_cqiType{WB}; //!< CQI type
 
         std::vector<double> m_sinr; //!< Vector of SINR for the entire band
         uint8_t m_wbCqi{0};         //!< CQI reported value
