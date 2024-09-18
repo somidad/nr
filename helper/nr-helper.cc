@@ -2014,54 +2014,49 @@ NrHelper::EnablePathlossTraces()
 }
 
 void
-NrHelper::EnableDlCtrlPathlossTraces(NetDeviceContainer& ueDevs)
+NrHelper::EnableDlCtrlCouplingLossTraces(NetDeviceContainer& ueDevs)
 {
     NS_LOG_FUNCTION(this);
 
     for (uint32_t i = 0; i < ueDevs.GetN(); i++)
     {
         Ptr<NrUeNetDevice> ueDev = DynamicCast<NrUeNetDevice>(ueDevs.Get(i));
-        NS_ASSERT_MSG(ueDev,
-                      "To EnableDlCtrlPathlossTracesfunction is passed device "
-                      "container that contains non UE devices.");
+        NS_ASSERT_MSG(ueDev, "non UE NetDevice found.");
         for (uint32_t j = 0; j < ueDev->GetCcMapSize(); j++)
         {
             Ptr<NrUePhy> nrUePhy = ueDev->GetPhy(j);
             Ptr<NrSpectrumPhy> nrSpectrumPhy = nrUePhy->GetSpectrumPhy();
-            nrSpectrumPhy->EnableDlCtrlPathlossTrace();
+            nrSpectrumPhy->EnableDlCtrlCouplingLossTrace();
         }
     }
 
     Config::Connect("/NodeList/*/DeviceList/*/ComponentCarrierMapUe/*/NrUePhy/NrSpectrumPhy/"
-                    "DlCtrlPathloss",
-                    MakeBoundCallback(&NrPhyRxTrace::ReportDlCtrlPathloss, GetPhyRxTrace()));
+                    "DlCtrlCouplingLoss",
+                    MakeBoundCallback(&NrPhyRxTrace::ReportDlCtrlPathloss, m_phyStats));
 }
 
 void
-NrHelper::EnableDlDataPathlossTraces(NetDeviceContainer& ueDevs)
+NrHelper::EnableDlDataCouplingLossTraces(NetDeviceContainer& ueDevs)
 {
     NS_LOG_FUNCTION(this);
 
-    NS_ASSERT_MSG(ueDevs.GetN(),
-                  "Passed an empty UE net device container EnableDlDataPathlossTraces function");
+    NS_ASSERT_MSG(ueDevs.GetN(), "non UE NetDevice found.");
 
     for (uint32_t i = 0; i < ueDevs.GetN(); i++)
     {
         Ptr<NrUeNetDevice> ueDev = DynamicCast<NrUeNetDevice>(ueDevs.Get(i));
-        NS_ASSERT_MSG(ueDev,
-                      "To EnableDlDataPathlossTracesfunction is passed device "
-                      "container that contains non UE devices.");
+        NS_ASSERT_MSG(ueDev, "non UE NetDevice found.");
         for (uint32_t j = 0; j < ueDev->GetCcMapSize(); j++)
         {
             Ptr<NrUePhy> nrUePhy = ueDev->GetPhy(j);
             Ptr<NrSpectrumPhy> nrSpectrumPhy = nrUePhy->GetSpectrumPhy();
-            nrSpectrumPhy->EnableDlDataPathlossTrace();
+            nrSpectrumPhy->EnableDlDataCouplingLossTrace();
         }
     }
 
     Config::Connect("/NodeList/*/DeviceList/*/ComponentCarrierMapUe/*/NrUePhy/NrSpectrumPhy/"
-                    "DlDataPathloss",
-                    MakeBoundCallback(&NrPhyRxTrace::ReportDlDataPathloss, GetPhyRxTrace()));
+                    "DlDataCouplingLoss",
+                    MakeBoundCallback(&NrPhyRxTrace::ReportDlDataPathloss, m_phyStats));
 }
 
 void

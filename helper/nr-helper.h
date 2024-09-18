@@ -846,22 +846,22 @@ class NrHelper : public Object
     void EnablePathlossTraces();
 
     /*
-     * \brief Enable DL CTRL pathloss trace from a serving cell (this trace connects
+     * \brief Enable DL CTRL Coupling loss trace from a serving cell (this trace connects
      * to NrSpectrumPhy trace, which is implementation wise different from
      * EnablePathlossTrace function which is implemented in by using
      * MultiModelSpectrumChannel trace and which
      * generates pathloss traces for both DL and UL
      */
-    void EnableDlCtrlPathlossTraces(NetDeviceContainer& netDeviceContainer);
+    void EnableDlCtrlCouplingLossTraces(NetDeviceContainer& netDeviceContainer);
 
     /*
-     * \brief Enable DL CTRL pathloss trace from a serving cell (this trace connects
+     * \brief Enable DL CTRL Coupling loss trace from a serving cell (this trace connects
      * to NrSpectrumPhy trace, which is implementation wise different from
      * EnablePathlossTrace function which is implemented in by using
      * MultiModelSpectrumChannel trace and which generates pathloss traces for
      * both DL and UL)
      */
-    void EnableDlDataPathlossTraces(NetDeviceContainer& netDeviceContainer);
+    void EnableDlDataCouplingLossTraces(NetDeviceContainer& netDeviceContainer);
 
     /**
      * Assign a fixed random variable stream number to the random variables used.

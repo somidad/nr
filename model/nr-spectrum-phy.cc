@@ -178,14 +178,14 @@ NrSpectrumPhy::GetTypeId()
                             "Report the SNR computed for each TB in DL",
                             MakeTraceSourceAccessor(&NrSpectrumPhy::m_dlDataSnrTrace),
                             "ns3::NrSpectrumPhy::DataSnrTracedCallback")
-            .AddTraceSource("DlCtrlPathloss",
-                            "Pathloss calculated for CTRL",
-                            MakeTraceSourceAccessor(&NrSpectrumPhy::m_dlCtrlPathlossTrace),
-                            "ns3::NrSpectrumPhy::DlPathlossTrace")
-            .AddTraceSource("DlDataPathloss",
-                            "Pathloss calculated for CTRL",
-                            MakeTraceSourceAccessor(&NrSpectrumPhy::m_dlDataPathlossTrace),
-                            "ns3::NrSpectrumPhy::DlPathlossTrace");
+            .AddTraceSource("DlCtrlCouplingLoss",
+                            "Coupling loss calculated for CTRL",
+                            MakeTraceSourceAccessor(&NrSpectrumPhy::m_dlCtrlCouplingLossTrace),
+                            "ns3::NrSpectrumPhy::DlCouplingLossTrace")
+            .AddTraceSource("DlDataCouplingLoss",
+                            "Coupling loss calculated for DATA",
+                            MakeTraceSourceAccessor(&NrSpectrumPhy::m_dlDataCouplingLossTrace),
+                            "ns3::NrSpectrumPhy::DlCouplingLossTrace");
 
     return tid;
 }
@@ -321,15 +321,15 @@ NrSpectrumPhy::GetErrorModel() const
 }
 
 void
-NrSpectrumPhy::EnableDlDataPathlossTrace()
+NrSpectrumPhy::EnableDlDataCouplingLossTrace()
 {
-    m_enableDlDataPathlossTrace = true;
+    m_enableDlDataCouplingLossTrace = true;
 }
 
 void
-NrSpectrumPhy::EnableDlCtrlPathlossTrace()
+NrSpectrumPhy::EnableDlCtrlCouplingLossTrace()
 {
-    m_enableDlCtrlPathlossTrace = true;
+    m_enableDlCtrlCouplingLossTrace = true;
 }
 
 void
@@ -446,18 +446,18 @@ NrSpectrumPhy::StartRx(Ptr<SpectrumSignalParameters> params)
             {
                 StartRxData(nrDataRxParams);
             }
-            if (!m_isGnb and m_enableDlDataPathlossTrace)
+            if (!m_isGnb and m_enableDlDataCouplingLossTrace)
             {
                 Ptr<const SpectrumValue> txPsd =
                     DynamicCast<NrSpectrumPhy>(nrDataRxParams->txPhy)->GetTxPowerSpectralDensity();
                 Ptr<const SpectrumValue> rxPsd = nrDataRxParams->psd;
-                double pathloss = 10 * log10(Integral(*txPsd)) - 10 * log10(Integral(*rxPsd));
+                double CouplingLoss = 10 * log10(Integral(*txPsd)) - 10 * log10(Integral(*rxPsd));
                 Ptr<NrUePhy> phy = (DynamicCast<NrUePhy>(m_phy));
-                m_dlDataPathlossTrace(GetCellId(),
-                                      GetBwpId(),
-                                      GetMobility()->GetObject<Node>()->GetId(),
-                                      pathloss,
-                                      phy->ComputeCqi(m_sinrPerceived));
+                m_dlDataCouplingLossTrace(GetCellId(),
+                                          GetBwpId(),
+                                          GetMobility()->GetObject<Node>()->GetId(),
+                                          CouplingLoss,
+                                          phy->ComputeCqi(m_sinrPerceived));
             }
         }
         else
@@ -496,17 +496,18 @@ NrSpectrumPhy::StartRx(Ptr<SpectrumSignalParameters> params)
                 m_interferenceCtrl->StartRxMimo(params);
                 StartRxDlCtrl(dlCtrlRxParams);
 
-                if (m_enableDlCtrlPathlossTrace)
+                if (m_enableDlCtrlCouplingLossTrace)
                 {
                     Ptr<const SpectrumValue> txPsd =
                         DynamicCast<NrSpectrumPhy>(dlCtrlRxParams->txPhy)
                             ->GetTxPowerSpectralDensity();
                     Ptr<const SpectrumValue> rxPsd = dlCtrlRxParams->psd;
-                    double pathloss = 10 * log10(Integral(*txPsd)) - 10 * log10(Integral(*rxPsd));
-                    m_dlCtrlPathlossTrace(GetCellId(),
-                                          GetBwpId(),
-                                          GetMobility()->GetObject<Node>()->GetId(),
-                                          pathloss);
+                    double CouplingLoss =
+                        10 * log10(Integral(*txPsd)) - 10 * log10(Integral(*rxPsd));
+                    m_dlCtrlCouplingLossTrace(GetCellId(),
+                                              GetBwpId(),
+                                              GetMobility()->GetObject<Node>()->GetId(),
+                                              CouplingLoss);
                 }
             }
             else

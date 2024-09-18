@@ -195,14 +195,14 @@ class NrSpectrumPhy : public SpectrumPhy
     Ptr<Object> GetAntenna() const override;
 
     /*
-     * \brief Used to enable generation and triggering of DL DATA pathloss trace
+     * \brief Used to enable generation and triggering of DL DATA CouplingLoss trace
      */
-    void EnableDlDataPathlossTrace();
+    void EnableDlDataCouplingLossTrace();
 
     /*
-     * \brief Used to enable generation and triggering of DL CTRL pahtloss trace
+     * \brief Used to enable generation and triggering of DL CTRL CouplingLoss trace
      */
-    void EnableDlCtrlPathlossTrace();
+    void EnableDlCtrlCouplingLossTrace();
 
     /**
      * \brief Inherited from SpectrumPhy. When this function is called
@@ -689,19 +689,19 @@ class NrSpectrumPhy : public SpectrumPhy
 
     /*
      * \brief Trace source that reports the following: Cell ID, Bwp ID, UE node ID, DL
-     * CTRL pathloss
+     * CTRL Coupling loss
      */
-    typedef TracedCallback<uint16_t, uint8_t, uint32_t, double> DlPathlossTrace;
-    DlPathlossTrace m_dlCtrlPathlossTrace; //!< DL CTRL pathloss trace
-    bool m_enableDlCtrlPathlossTrace =
+    typedef TracedCallback<uint16_t, uint8_t, uint32_t, double> DlCouplingLossTrace;
+    DlCouplingLossTrace m_dlCtrlCouplingLossTrace; //!< DL CTRL Coupling loss trace
+    bool m_enableDlCtrlCouplingLossTrace =
         false; //!< By default this trace is disabled to not slow done simulations
     /*
      * \brief Trace source that reports the following: Cell ID, Bwp ID, UE node ID, DL
-     * CTRL pathloss, CQI that corresponds to the current SINR
+     * CTRL Coupling loss, CQI that corresponds to the current SINR
      */
-    typedef TracedCallback<uint16_t, uint8_t, uint32_t, double, uint8_t> DlDataPathlossTrace;
-    DlDataPathlossTrace m_dlDataPathlossTrace; //!< DL DATA pathloss trace
-    bool m_enableDlDataPathlossTrace =
+    typedef TracedCallback<uint16_t, uint8_t, uint32_t, double, uint8_t> DlDataCouplingLossTrace;
+    DlDataCouplingLossTrace m_dlDataCouplingLossTrace; //!< DL DATA Coupling loss trace
+    bool m_enableDlDataCouplingLossTrace =
         false; //!< By default this trace is disabled to not slow done simulations
     bool m_isGnb = false;
 };
