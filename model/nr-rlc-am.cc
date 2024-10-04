@@ -411,17 +411,17 @@ NrRlcAm::DoNotifyTxOpportunity(NrMacSapUser::TxOpportunityParameters txOpParams)
     }
     else if (m_txonBufferSize > 0)
     {
-        if (txOpParams.bytes < 7)
-        {
-            // Stingy MAC: We need more bytes for new DATA PDUs.
-            NS_LOG_LOGIC("TxOpportunity (size = " << txOpParams.bytes
-                                                  << ") too small for DATA PDU");
-            NS_ASSERT_MSG(false,
-                          "TxOpportunity (size = "
-                              << txOpParams.bytes << ") too small for DATA PDU\n"
-                              << "Your MAC scheduler is assigned too few resource blocks.");
-            return;
-        }
+        // if (txOpParams.bytes <= 7)
+        //{
+        //     // Stingy MAC: We need more bytes for new DATA PDUs.
+        //     NS_LOG_LOGIC("TxOpportunity (size = " << txOpParams.bytes
+        //                                           << ") too small for DATA PDU");
+        //     NS_ASSERT_MSG(false,
+        //                   "TxOpportunity (size = "
+        //                       << txOpParams.bytes << ") too small for DATA PDU\n"
+        //                       << "Your MAC scheduler is assigned too few resource blocks.");
+        //     return;
+        // }
 
         NS_ASSERT(m_vtS <= m_vtMs);
         if (m_vtS == m_vtMs)

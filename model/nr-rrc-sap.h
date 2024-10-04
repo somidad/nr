@@ -17,6 +17,7 @@
 namespace ns3
 {
 
+class NrUeNetDevice;
 class NrRlcSapUser;
 class NrPdcpSapUser;
 class NrRlcSapProvider;
@@ -733,7 +734,9 @@ class NrRrcSap
     /// RrcConnectionRequest structure
     struct RrcConnectionRequest
     {
-        uint64_t ueIdentity; ///< UE identity
+        uint64_t ueIdentity;        ///< UE identity
+        NrUeNetDevice* ueNetDevice; ///< Non-standard, but we need a way to pass the netdevice for
+                                    ///< the beamforming manager
     };
 
     /// RrcConnectionSetup structure

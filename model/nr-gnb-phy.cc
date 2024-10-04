@@ -1593,7 +1593,9 @@ NrGnbPhy::RegisterUe(uint64_t imsi, const Ptr<NrUeNetDevice>& ueDevice)
     }
     else
     {
-        NS_LOG_ERROR("Programming error...UE already attached");
+        // todo: it could happen we already have this UE added by the NrHelper::AttachToGnb
+        // we need this for the beamforming manager to work
+        // NS_LOG_ERROR("Programming error...UE already attached");
         return (false);
     }
 }

@@ -16,7 +16,10 @@
 #include "ns3/uniform-planar-array.h"
 #include <ns3/boolean.h>
 #include <ns3/double.h>
+#include <ns3/spectrum-value.h>
 #include <ns3/trace-source-accessor.h>
+
+#include <numeric>
 
 namespace ns3
 {
@@ -1260,7 +1263,15 @@ TransportBlockInfo::UpdatePerceivedSinr(const SpectrumValue& perceivedSinr)
 {
     m_sinrAvg = 0.0;
     m_sinrMin = 99999999999;
-    for (const auto& rbIndex : m_expected.m_rbBitmap)
+    auto& rbBitmap = m_expected.m_rbBitmap;
+    // todo: In case we have a smaller channel due to control signaling MIB, we do things
+    // differently
+    if (perceivedSinr.GetValuesN() == 5)
+    {
+        rbBitmap = std::vector<int>(5, 0);
+        std::iota(rbBitmap.begin(), rbBitmap.end(), 0);
+    }
+    for (const auto& rbIndex : rbBitmap)
     {
         m_sinrAvg += perceivedSinr.ValuesAt(rbIndex);
         if (perceivedSinr.ValuesAt(rbIndex) < m_sinrMin)
@@ -1269,7 +1280,7 @@ TransportBlockInfo::UpdatePerceivedSinr(const SpectrumValue& perceivedSinr)
         }
     }
 
-    m_sinrAvg = m_sinrAvg / m_expected.m_rbBitmap.size();
+    m_sinrAvg = m_sinrAvg / rbBitmap.size();
 
     NS_LOG_INFO("Finishing RX, sinrAvg=" << m_sinrAvg << " sinrMin=" << m_sinrMin
                                          << " SinrAvg (dB) " << 10 * log(m_sinrAvg) / log(10));

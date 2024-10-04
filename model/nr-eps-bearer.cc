@@ -148,6 +148,7 @@ NrEpsBearer::GetRequirementsRel11()
      * }
      */
     static NrEpsBearer::BearerRequirementsMap ret{
+        {CCCH, std::make_tuple(1, 2, 100, 1.0e-2, 0, 0)},
         {GBR_CONV_VOICE, std::make_tuple(1, 2, 100, 1.0e-2, 0, 0)},
         {GBR_CONV_VIDEO, std::make_tuple(1, 4, 150, 1.0e-3, 0, 0)},
         {GBR_GAMING, std::make_tuple(1, 3, 50, 1.0e-3, 0, 0)},
@@ -166,6 +167,7 @@ NrEpsBearer::GetRequirementsRel15()
 {
     // Needed to support GCC 4.9. Otherwise, use list constructors (see GetRequirementsRel10)
     static NrEpsBearer::BearerRequirementsMap ret{
+        {CCCH, std::make_tuple(1, 2, 100, 1.0e-2, 0, 0)},
         {GBR_CONV_VOICE, std::make_tuple(1, 20, 100, 1.0e-2, 0, 2000)},
         {GBR_CONV_VIDEO, std::make_tuple(1, 40, 150, 1.0e-3, 0, 2000)},
         {GBR_GAMING, std::make_tuple(1, 30, 50, 1.0e-3, 0, 2000)},
@@ -196,6 +198,7 @@ NrEpsBearer::GetRequirementsRel18()
 {
     // Needed to support GCC 4.9. Otherwise, use list constructors (see GetRequirementsRel10)
     static NrEpsBearer::BearerRequirementsMap ret{
+        {CCCH, std::make_tuple(1, 2, 100, 1.0e-2, 0, 0)},
         {GBR_CONV_VOICE, std::make_tuple(1, 20, 100, 1.0e-2, 0, 2000)},
         {GBR_CONV_VIDEO, std::make_tuple(1, 40, 150, 1.0e-3, 0, 2000)},
         {GBR_GAMING, std::make_tuple(1, 30, 50, 1.0e-3, 0, 2000)},

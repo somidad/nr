@@ -71,6 +71,11 @@ NrAmc::GetTypeId()
                           TypeIdValue(NrLteMiErrorModel::GetTypeId()),
                           MakeTypeIdAccessor(&NrAmc::SetErrorModelType, &NrAmc::GetErrorModelType),
                           MakeTypeIdChecker())
+            .AddAttribute("Ber",
+                          "Bit-level error rate for NR with Shannon's model",
+                          DoubleValue(0.00001),
+                          MakeDoubleAccessor(&NrAmc::m_ber),
+                          MakeDoubleChecker<double>(0.0, 1.0))
             .AddConstructor<NrAmc>();
     return tid;
 }
@@ -354,7 +359,7 @@ NrAmc::GetBer() const
     }
     else
     {
-        return 0.00001; // Value for NR error model
+        return m_ber; // Value for NR error model
     }
 }
 

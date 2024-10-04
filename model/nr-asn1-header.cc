@@ -211,6 +211,12 @@ NrAsn1Header::SerializeBitstring(std::bitset<32> data) const
 }
 
 void
+NrAsn1Header::SerializeBitstring(std::bitset<64> data) const
+{
+    SerializeBitstring<64>(data);
+}
+
+void
 NrAsn1Header::SerializeBoolean(bool value) const
 {
     // Clause 12 ITU-T X.691
@@ -562,6 +568,13 @@ Buffer::Iterator
 NrAsn1Header::DeserializeBitstring(std::bitset<32>* data, Buffer::Iterator bIterator)
 {
     return DeserializeBitstring<32>(data, bIterator);
+}
+
+Buffer::Iterator
+NrAsn1Header::DeserializeBitstring(std::bitset<64>* optionalOrDefaultMask,
+                                   Buffer::Iterator bIterator)
+{
+    return DeserializeBitstring<64>(optionalOrDefaultMask, bIterator);
 }
 
 Buffer::Iterator

@@ -72,7 +72,7 @@ class NrGnbCmacSapProvider
      * \param lcinfo
      * \param msu
      */
-    virtual void AddLc(LcInfo lcinfo, NrMacSapUser* msu) = 0;
+    virtual void AddLc(LcInfo lcinfo, NrMacSapUser* msu, bool forceAdd = false) = 0;
 
     /**
      * Reconfigure an existing logical channel

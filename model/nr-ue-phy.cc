@@ -193,6 +193,34 @@ NrUePhy::GetTypeId()
                             "Report UE measurements RSRP (dBm) and RSRQ (dB).",
                             MakeTraceSourceAccessor(&NrUePhy::m_reportUeMeasurements),
                             "ns3::NrUePhy::RsrpRsrqTracedCallback")
+            .AddAttribute("Qout",
+                          "corresponds to 10% block error rate of a hypothetical PDCCH transmission"
+                          "taking into account the PCFICH errors with transmission parameters."
+                          "see 3GPP TS 36.213 4.2.1 and TS 36.133 7.6",
+                          DoubleValue(800), // todo: determine the appropriate value for 5G NR
+                          MakeDoubleAccessor(&NrUePhy::m_qOut),
+                          MakeDoubleChecker<double>())
+            .AddAttribute("Qin",
+                          "corresponds to 2% block error rate of a hypothetical PDCCH transmission"
+                          "taking into account the PCFICH errors with transmission parameters."
+                          "see 3GPP TS 36.213 4.2.1 and TS 36.133 7.6",
+                          DoubleValue(-3.9), // todo: determine the appropriate value for 5G NR
+                          MakeDoubleAccessor(&NrUePhy::m_qIn),
+                          MakeDoubleChecker<double>())
+            .AddAttribute(
+                "NumQoutEvalSf",
+                "This specifies the total number of consecutive subframes"
+                "which corresponds to the Qout evaluation period",
+                UintegerValue(200), // see 3GPP 3GPP TS 36.133 7.6.2.1
+                MakeUintegerAccessor(&NrUePhy::SetNumQoutEvalSf, &NrUePhy::GetNumQoutEvalSf),
+                MakeUintegerChecker<uint16_t>())
+            .AddAttribute(
+                "NumQinEvalSf",
+                "This specifies the total number of consecutive subframes"
+                "which corresponds to the Qin evaluation period",
+                UintegerValue(100), // see 3GPP 3GPP TS 36.133 7.6.2.1
+                MakeUintegerAccessor(&NrUePhy::SetNumQinEvalSf, &NrUePhy::GetNumQinEvalSf),
+                MakeUintegerChecker<uint16_t>())
             .AddAttribute("EnableRlfDetection",
                           "If true, RLF detection will be enabled.",
                           BooleanValue(true),
@@ -1394,7 +1422,6 @@ void
 NrUePhy::ReportUeMeasurements()
 {
     NS_LOG_FUNCTION(this);
-
     NrUeCphySapUser::UeMeasurementsParameters ret;
 
     std::map<uint16_t, UeMeasurementsElement>::iterator it;
@@ -1413,8 +1440,8 @@ NrUePhy::ReportUeMeasurements()
         }
 
         NS_LOG_DEBUG(" Report UE Measurements for CellId "
-                     << (*it).first << " Reporting UE " << m_rnti << " Av. RSRP " << avg_rsrp
-                     << " (nSamples " << +((*it).second.rsrpNum) << ")"
+                     << it->first << " Reporting UE " << m_rnti << " Av. RSRP " << avg_rsrp
+                     << " (nSamples " << +(it->second.rsrpNum) << ")"
                      << " BwpID " << GetBwpId());
 
         m_reportRsrpTrace(GetCellId(), m_imsi, m_rnti, avg_rsrp, GetBwpId());
@@ -1476,6 +1503,7 @@ NrUePhy::ComputeCqi(const SpectrumValue& sinr)
     NS_LOG_FUNCTION(this);
     uint8_t mcs; // it is initialized by AMC in the following call
     uint8_t wbCqi = m_amc->CreateCqiFeedbackWbTdma(sinr, mcs);
+    m_ctrlSinrForRlf = sinr;
     return wbCqi;
 }
 
@@ -1612,7 +1640,41 @@ NrUePhy::SetPhySapUser(NrUePhySapUser* ptr)
 }
 
 void
-NrUePhy::DoNotifyConnectionSuccessful()
+NrUePhy::SetNumQoutEvalSf(uint16_t numSubframes)
+{
+    NS_LOG_FUNCTION(this << numSubframes);
+    NS_ABORT_MSG_IF(numSubframes % 10 != 0,
+                    "Number of subframes used for Qout "
+                    "evaluation must be multiple of 10");
+    m_numOfQoutEvalSf = numSubframes;
+}
+
+void
+NrUePhy::SetNumQinEvalSf(uint16_t numSubframes)
+{
+    NS_LOG_FUNCTION(this << numSubframes);
+    NS_ABORT_MSG_IF(numSubframes % 10 != 0,
+                    "Number of subframes used for Qin "
+                    "evaluation must be multiple of 10");
+    m_numOfQinEvalSf = numSubframes;
+}
+
+uint16_t
+NrUePhy::GetNumQoutEvalSf() const
+{
+    NS_LOG_FUNCTION(this);
+    return m_numOfQoutEvalSf;
+}
+
+uint16_t
+NrUePhy::GetNumQinEvalSf() const
+{
+    NS_LOG_FUNCTION(this);
+    return m_numOfQinEvalSf;
+}
+
+void
+NrUePhy::NotifyConnectionSuccessful()
 {
     /**
      * Radio link failure detection should take place only on the

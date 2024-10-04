@@ -23,6 +23,7 @@
 #include "nr-rlc-tm.h"
 #include "nr-rlc-um.h"
 #include "nr-rlc.h"
+#include "nr-ue-net-device.h"
 
 #include <ns3/abort.h>
 #include <ns3/fatal-error.h>
@@ -206,7 +207,7 @@ NrUeManager::DoInitialize()
         NrMacSapUser* nrMacSapUser =
             m_rrc->m_ccmRrcSapProvider->ConfigureSignalBearer(lcinfo, rlc->GetNrMacSapUser());
         // Signal Channel are only on Primary Carrier
-        m_rrc->m_cmacSapProvider.at(m_componentCarrierId)->AddLc(lcinfo, nrMacSapUser);
+        m_rrc->m_cmacSapProvider.at(m_componentCarrierId)->AddLc(lcinfo, nrMacSapUser, true);
         m_rrc->m_ccmRrcSapProvider->AddLc(lcinfo, nrMacSapUser);
     }
 
@@ -1128,6 +1129,11 @@ NrUeManager::RecvRrcConnectionRequest(NrRrcSap::RrcConnectionRequest msg)
         if (m_rrc->m_admitRrcConnectionRequest)
         {
             m_imsi = msg.ueIdentity;
+            // Register NrUeNetDevice to be used by beamforming manager
+            for (auto& phySapProvider : m_rrc->m_cphySapProvider)
+            {
+                phySapProvider->RegisterUe(m_imsi, msg.ueNetDevice);
+            }
 
             // send RRC CONNECTION SETUP to UE
             NrRrcSap::RrcConnectionSetup msg2;

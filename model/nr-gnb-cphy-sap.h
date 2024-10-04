@@ -16,7 +16,7 @@
 
 namespace ns3
 {
-
+class NrUeNetDevice;
 class NrGnbNetDevice;
 
 /**
@@ -62,6 +62,14 @@ class NrGnbCphySapProvider
      * \param rnti the UE id relative to this cell
      */
     virtual void AddUe(uint16_t rnti) = 0;
+
+    /**
+     * Add a new UE to the cell, along with its UeNetDevice, used by the beamforming manager
+     *
+     * \param rnti UE RNTI
+     * \param ueNetDevice UE NrNetDevice
+     */
+    virtual void RegisterUe(uint16_t rnti, Ptr<NrUeNetDevice> ueNetDevice) = 0;
 
     /**
      * Remove an UE from the cell
@@ -154,6 +162,7 @@ class MemberNrGnbCphySapProvider : public NrGnbCphySapProvider
     void SetBandwidth(uint16_t ulBandwidth, uint16_t dlBandwidth) override;
     void SetEarfcn(uint32_t ulEarfcn, uint32_t dlEarfcn) override;
     void AddUe(uint16_t rnti) override;
+    void RegisterUe(uint16_t rnti, Ptr<NrUeNetDevice> ueNetDevice) override;
     void RemoveUe(uint16_t rnti) override;
     void SetPa(uint16_t rnti, double pa) override;
     void SetTransmissionMode(uint16_t rnti, uint8_t txMode) override;
@@ -198,6 +207,13 @@ void
 MemberNrGnbCphySapProvider<C>::AddUe(uint16_t rnti)
 {
     m_owner->DoAddUe(rnti);
+}
+
+template <class C>
+void
+MemberNrGnbCphySapProvider<C>::RegisterUe(uint16_t rnti, Ptr<NrUeNetDevice> ueNetDevice)
+{
+    m_owner->RegisterUe(rnti, ueNetDevice);
 }
 
 template <class C>

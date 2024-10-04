@@ -465,6 +465,11 @@ class NrUePhy : public NrPhy
     /// \brief Get the precoding matrix search engine
     Ptr<NrPmSearch> GetPmSearch() const;
 
+    void SetNumQoutEvalSf(uint16_t numSubframes);
+    void SetNumQinEvalSf(uint16_t numSubframes);
+    uint16_t GetNumQoutEvalSf() const;
+    uint16_t GetNumQinEvalSf() const;
+
   protected:
     /**
      * \brief DoDispose method inherited from Object
@@ -921,7 +926,7 @@ class NrUePhy : public NrPhy
     TracedCallback<uint16_t, uint16_t, double, double, bool, uint8_t> m_reportUeMeasurements;
 
     bool m_isConnected;
-    void DoNotifyConnectionSuccessful();
+    void NotifyConnectionSuccessful() override;
     /**
      * The 'Qin' attribute.
      * corresponds to 2% block error rate of a hypothetical PDCCH transmission

@@ -300,7 +300,7 @@ class NrGnbMac : public Object
     void DoConfigureMac(uint16_t ulBandwidth, uint16_t dlBandwidth);
     void DoAddUe(uint16_t rnti);
     void DoRemoveUe(uint16_t rnti);
-    void DoAddLc(NrGnbCmacSapProvider::LcInfo lcinfo, NrMacSapUser* msu);
+    void DoAddLc(NrGnbCmacSapProvider::LcInfo lcinfo, NrMacSapUser* msu, bool forceAdd = false);
     void DoReconfigureLc(NrGnbCmacSapProvider::LcInfo lcinfo);
     void DoReleaseLc(uint16_t rnti, uint8_t lcid);
     void UeUpdateConfigurationReq(NrGnbCmacSapProvider::UeConfig params);

@@ -245,6 +245,7 @@ class NrAmc : public Object
     uint8_t m_numRefScPerRb{1};                    //!< number of reference subcarriers per RB
     NrErrorModel::Mode m_emMode{NrErrorModel::DL}; //!< Error model mode
     static const unsigned int m_crcLen = 24 / 8;   //!< CRC length (in bytes)
+    double m_ber;                                  //!< NR Bit-error rate
 };
 
 } // end namespace ns3

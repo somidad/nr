@@ -349,11 +349,7 @@ void
 NrUeMac::DoTransmitPdu(NrMacSapProvider::TransmitPduParameters params)
 {
     NS_LOG_FUNCTION(this);
-    if (m_ulDci == nullptr)
-    {
-        return;
-    }
-    NS_ASSERT(m_ulDci);
+    NS_ABORT_MSG_IF(!m_ulDci, "Can't transmit PDU without UlDci");
     NS_ASSERT(m_ulDci->m_harqProcess == params.harqProcessId);
 
     m_miUlHarqProcessesPacket.at(params.harqProcessId).m_lcidList.push_back(params.lcid);
@@ -624,6 +620,13 @@ NrUeMac::RecvRaResponse(NrBuildRarListElement_s raResponse)
                          << ", setting T-C-RNTI = " << raResponse.ulMsg3Dci->m_rnti
                          << " at: " << Simulator::Now().As(Time::MS));
     m_rnti = raResponse.ulMsg3Dci->m_rnti;
+
+    // Save data for MSG3
+    m_ulDciSfnsf = m_currentSlot;
+    m_ulDciSfnsf.Add(raResponse.k2Delay);
+    m_ulDciTotalUsed = 0;
+    m_ulDci = raResponse.ulMsg3Dci;
+
     m_cmacSapUser->SetTemporaryCellRnti(m_rnti);
     // in principle we should wait for contention resolution,
     // but in the current NR model when two or more identical
@@ -825,45 +828,62 @@ NrUeMac::SendTxData(uint32_t usefulTbs, uint32_t activeTx)
         return;
     }
 
-    uint32_t bytesPerLcId = usefulTbs / activeTx;
-
-    for (auto& itBsr : m_ulBsrReceived)
+    // Apply shortest-job first policy to prioritize lcids with less data
+    while (m_ulDciTotalUsed < usefulTbs)
     {
-        auto& bsr = itBsr.second;
+        uint32_t availableBytes = usefulTbs - m_ulDciTotalUsed;
 
-        if (m_ulDciTotalUsed + bytesPerLcId <= usefulTbs)
+        uint32_t smallestBufferBytes = std::numeric_limits<uint32_t>::max();
+        uint8_t smallestBufferBsrLcid = std::numeric_limits<uint8_t>::max();
+        for (auto& itBsr : m_ulBsrReceived)
         {
-            NrMacSapUser::TxOpportunityParameters txParams;
-            txParams.lcid = bsr.lcid;
-            txParams.rnti = m_rnti;
-            txParams.bytes = bytesPerLcId;
-            txParams.layer = 0;
-            txParams.harqId = m_ulDci->m_harqProcess;
-            txParams.componentCarrierId = GetBwpId();
-
-            NS_LOG_INFO("Notifying RLC of LCID " << +bsr.lcid
-                                                 << " of a TxOpp "
-                                                    "of "
-                                                 << bytesPerLcId << " B for a TX PDU");
-
-            m_lcInfoMap.at(bsr.lcid).macSapUser->NotifyTxOpportunity(txParams);
-            // After this call, m_ulDciTotalUsed has been updated with the
-            // correct amount of bytes... but it is up to us in updating the BSR
-            // value, subtracting the amount of bytes transmitted
-
-            // We need to use std::min here because bytesPerLcId can be
-            // greater than bsr.txQueueSize because scheduler can assign
-            // more bytes than needed due to how TB size is computed.
-            bsr.txQueueSize -= std::min(bytesPerLcId, bsr.txQueueSize);
+            const auto& bsr = itBsr.second;
+            // Skip lcid with empty queue
+            if (bsr.txQueueSize == 0)
+            {
+                continue;
+            }
+            if (bsr.txQueueSize < smallestBufferBytes)
+            {
+                smallestBufferBsrLcid = bsr.lcid;
+                smallestBufferBytes = bsr.txQueueSize;
+            }
         }
-        else
+
+        // No LCID left to txop, even though we still have bytes available
+        if (smallestBufferBytes == std::numeric_limits<uint32_t>::max())
         {
-            NS_LOG_DEBUG("Something wrong with the calculation of overhead."
-                         "Active LCS TX: "
-                         << activeTx << " assigned to this: " << bytesPerLcId << ", with TBS of "
-                         << m_ulDci->m_tbSize << " usefulTbs " << usefulTbs << " and total used "
-                         << m_ulDciTotalUsed);
+            break;
         }
+
+        // We need to allocate at least 7 bytes per LCID due to RLC limitations
+        // But we can allocate up to availableBytes
+        uint32_t bytesPerLcId =
+            std::min(availableBytes, std::max<uint32_t>(smallestBufferBytes, 8));
+
+        auto& bsr = m_ulBsrReceived.at(smallestBufferBsrLcid);
+        NrMacSapUser::TxOpportunityParameters txParams;
+        txParams.lcid = bsr.lcid;
+        txParams.rnti = m_rnti;
+        txParams.bytes = bytesPerLcId;
+        txParams.layer = 0;
+        txParams.harqId = m_ulDci->m_harqProcess;
+        txParams.componentCarrierId = GetBwpId();
+
+        NS_LOG_INFO("Notifying RLC of LCID " << +bsr.lcid
+                                             << " of a TxOpp "
+                                                "of "
+                                             << bytesPerLcId << " B for a TX PDU");
+
+        m_lcInfoMap.at(bsr.lcid).macSapUser->NotifyTxOpportunity(txParams);
+        // After this call, m_ulDciTotalUsed has been updated with the
+        // correct amount of bytes... but it is up to us in updating the BSR
+        // value, subtracting the amount of bytes transmitted
+
+        // We need to use std::min here because bytesPerLcId can be
+        // greater than bsr.txQueueSize because scheduler can assign
+        // more bytes than needed due to how TB size is computed.
+        bsr.txQueueSize -= std::min(bytesPerLcId, bsr.txQueueSize);
     }
 }
 

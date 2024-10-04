@@ -19,9 +19,12 @@
 #include "nr-rlc-tm.h"
 #include "nr-rlc-um.h"
 #include "nr-rlc.h"
+#include "nr-ue-net-device.h"
 
 #include <ns3/fatal-error.h>
 #include <ns3/log.h>
+#include <ns3/node-list.h>
+#include <ns3/node.h>
 #include <ns3/object-factory.h>
 #include <ns3/object-map.h>
 #include <ns3/simulator.h>
@@ -658,6 +661,8 @@ NrUeRrc::DoNotifyRandomAccessSuccessful()
         SwitchToState(IDLE_CONNECTING);
         NrRrcSap::RrcConnectionRequest msg;
         msg.ueIdentity = m_imsi;
+        msg.ueNetDevice =
+            PeekPointer(DynamicCast<NrUeNetDevice>(NodeList::GetNode(m_imsi)->GetDevice(0)));
         m_rrcSapUser->SendRrcConnectionRequest(msg);
         m_connectionTimeout = Simulator::Schedule(m_t300, &NrUeRrc::ConnectionTimeout, this);
     }

@@ -11,6 +11,7 @@
 
 #include "ns3/log.h"
 
+#include <memory>
 #include <sstream>
 #include <stdio.h>
 
@@ -4821,6 +4822,9 @@ NrRrcConnectionRequestHeader::PreSerialize() const
     // Serialize establishmentCause : EstablishmentCause ::= ENUMERATED
     SerializeEnum(8, m_establishmentCause);
 
+    // Serialize raw pointer to UeNetDevice, not part of the standard
+    SerializeBitstring(m_ueNetDevicePtr);
+
     // Serialize spare : BIT STRING (SIZE (1))
     SerializeBitstring(std::bitset<1>());
 
@@ -4861,6 +4865,9 @@ NrRrcConnectionRequestHeader::Deserialize(Buffer::Iterator bIterator)
     // Deserialize establishmentCause
     bIterator = DeserializeEnum(8, &selectedOption, bIterator);
 
+    // Deserialize raw pointer to UeNetDevice, not part of the standard
+    bIterator = DeserializeBitstring(&m_ueNetDevicePtr, bIterator);
+
     // Deserialize spare
     bIterator = DeserializeBitstring(&dummy, bIterator);
 
@@ -4872,6 +4879,7 @@ NrRrcConnectionRequestHeader::SetMessage(NrRrcSap::RrcConnectionRequest msg)
 {
     m_mTmsi = std::bitset<32>((uint32_t)msg.ueIdentity);
     m_mmec = std::bitset<8>((uint32_t)(msg.ueIdentity >> 32));
+    m_ueNetDevicePtr = std::bitset<64>((uint64_t)msg.ueNetDevice);
     m_isDataSerialized = false;
 }
 
@@ -4880,7 +4888,7 @@ NrRrcConnectionRequestHeader::GetMessage() const
 {
     NrRrcSap::RrcConnectionRequest msg;
     msg.ueIdentity = (((uint64_t)m_mmec.to_ulong()) << 32) | (m_mTmsi.to_ulong());
-
+    msg.ueNetDevice = (NrUeNetDevice*)m_ueNetDevicePtr.to_ullong();
     return msg;
 }
 

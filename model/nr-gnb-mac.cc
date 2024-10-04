@@ -47,7 +47,7 @@ class NrGnbMacMemberGnbCmacSapProvider : public NrGnbCmacSapProvider
     void ConfigureMac(uint16_t ulBandwidth, uint16_t dlBandwidth) override;
     void AddUe(uint16_t rnti) override;
     void RemoveUe(uint16_t rnti) override;
-    void AddLc(LcInfo lcinfo, NrMacSapUser* msu) override;
+    void AddLc(LcInfo lcinfo, NrMacSapUser* msu, bool forceAdd) override;
     void ReconfigureLc(LcInfo lcinfo) override;
     void ReleaseLc(uint16_t rnti, uint8_t lcid) override;
     void UeUpdateConfigurationReq(UeConfig params) override;
@@ -82,9 +82,9 @@ NrGnbMacMemberGnbCmacSapProvider::RemoveUe(uint16_t rnti)
 }
 
 void
-NrGnbMacMemberGnbCmacSapProvider::AddLc(LcInfo lcinfo, NrMacSapUser* msu)
+NrGnbMacMemberGnbCmacSapProvider::AddLc(LcInfo lcinfo, NrMacSapUser* msu, bool forceAdd)
 {
-    m_mac->DoAddLc(lcinfo, msu);
+    m_mac->DoAddLc(lcinfo, msu, forceAdd);
 }
 
 void
@@ -1014,7 +1014,11 @@ NrGnbMac::DoReceiveControlMessage(Ptr<NrControlMessage> msg)
         Ptr<NrDlCqiMessage> cqi = DynamicCast<NrDlCqiMessage>(msg);
         DlCqiInfo cqiElement = cqi->GetDlCqi();
         NS_ASSERT(cqiElement.m_rnti != 0);
-        m_dlCqiReceived.push_back(cqiElement);
+        // Ignore CQIs of disconnected UEs
+        if (m_rlcAttached.find(cqiElement.m_rnti) != m_rlcAttached.end())
+        {
+            m_dlCqiReceived.push_back(cqiElement);
+        }
         break;
     }
     case (NrControlMessage::DL_HARQ): {
@@ -1490,7 +1494,7 @@ NrGnbMac::DoRemoveUe(uint16_t rnti)
 }
 
 void
-NrGnbMac::DoAddLc(NrGnbCmacSapProvider::LcInfo lcinfo, NrMacSapUser* msu)
+NrGnbMac::DoAddLc(NrGnbCmacSapProvider::LcInfo lcinfo, NrMacSapUser* msu, bool forceAdd)
 {
     NS_LOG_FUNCTION(this);
     NS_LOG_FUNCTION(this);
@@ -1512,7 +1516,7 @@ NrGnbMac::DoAddLc(NrGnbCmacSapProvider::LcInfo lcinfo, NrMacSapUser* msu)
     // see FF LTE MAC Scheduler
     // Interface Specification v1.11,
     // 4.3.4 logicalChannelConfigListElement
-    if (lcinfo.lcId != 0)
+    if (forceAdd || lcinfo.lcId != 0)
     {
         struct NrMacCschedSapProvider::CschedLcConfigReqParameters params;
         params.m_rnti = lcinfo.rnti;

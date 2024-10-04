@@ -246,6 +246,11 @@ class NrAsn1Header : public Header
      * \param bitstring bitstring to serialize
      */
     void SerializeBitstring(std::bitset<32> bitstring) const;
+    /**
+     * Serialize a bitstring
+     * \param bitstring bitstring to serialize
+     */
+    void SerializeBitstring(std::bitset<64> bitstring) const;
 
     // Deserialization functions
 
@@ -489,6 +494,13 @@ class NrAsn1Header : public Header
      * \returns the modified buffer iterator
      */
     Buffer::Iterator DeserializeBitstring(std::bitset<32>* bitstring, Buffer::Iterator bIterator);
+    /**
+     * Deserialize a bitstring
+     * \param bitstring buffer to store the result
+     * \param bIterator buffer iterator
+     * \returns the modified buffer iterator
+     */
+    Buffer::Iterator DeserializeBitstring(std::bitset<64>* bitstring, Buffer::Iterator bIterator);
 
     /**
      * Deserialize nothing (null op)

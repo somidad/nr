@@ -197,13 +197,16 @@ NrRadioLinkFailureTestCase::DoRun()
     NS_LOG_FUNCTION(this << GetName());
     uint16_t numBearersPerUe = 1;
     Time simTime = m_simTime;
-    double eNodeB_txPower = 43;
+    double eNodeB_txPower = 30;
 
     Config::SetDefault("ns3::NrHelper::UseIdealRrc", BooleanValue(m_isIdealRrc));
 
     Ptr<NrHelper> nrHelper = CreateObject<NrHelper>();
     Ptr<NrPointToPointEpcHelper> nrEpcHelper = CreateObject<NrPointToPointEpcHelper>();
     nrHelper->SetEpcHelper(nrEpcHelper);
+
+    // Increase RSRP reporting frequency
+    Config::SetDefault("ns3::NrUePhy::UeMeasurementsFilterPeriod", TimeValue(MilliSeconds(1)));
 
     //----power related (equal for all base stations)----
     Config::SetDefault("ns3::NrGnbPhy::TxPower", DoubleValue(eNodeB_txPower));
@@ -220,9 +223,10 @@ NrRadioLinkFailureTestCase::DoRun()
 
     //----others----
     nrHelper->SetSchedulerTypeId(TypeId::LookupByName("ns3::NrMacSchedulerTdmaPF"));
+    Config::SetDefault("ns3::NrAmc::ErrorModelType",
+                       TypeIdValue(TypeId::LookupByName("ns3::NrEesmCcT1")));
     Config::SetDefault("ns3::NrAmc::AmcModel", EnumValue(NrAmc::ShannonModel));
     Config::SetDefault("ns3::NrAmc::Ber", DoubleValue(0.01));
-    Config::SetDefault("ns3::PfFfMacScheduler::HarqEnabled", BooleanValue(true));
 
     // Radio link failure detection parameters
     Config::SetDefault("ns3::NrUeRrc::N310", UintegerValue(1));
@@ -298,6 +302,10 @@ NrRadioLinkFailureTestCase::DoRun()
 
     // Attach a UE to a eNB
     nrHelper->AttachToClosestGnb(ueDevs, gnbDevs);
+
+    // Update device configs
+    nrHelper->UpdateDeviceConfigs(gnbDevs);
+    nrHelper->UpdateDeviceConfigs(ueDevs);
 
     // Install and start applications on UEs and remote host
     uint16_t dlPort = 10000;
@@ -422,7 +430,6 @@ NrRadioLinkFailureTestCase::JumpAway(Vector UeJumpAwayPosition)
 {
     NS_LOG_FUNCTION(this);
     // move to a far away location so that transmission errors occur
-
     m_ueMobility->SetPosition(UeJumpAwayPosition);
 }
 
@@ -559,7 +566,7 @@ NrRadioLinkFailureTestCase::CheckUeExistAtGnb(uint16_t rnti, Ptr<NetDevice> gnbD
     Ptr<NrGnbNetDevice> nrGnbDevice = DynamicCast<NrGnbNetDevice>(gnbDevice);
     NS_ABORT_MSG_IF(!nrGnbDevice, "LTE gNB device not found");
     Ptr<NrGnbRrc> gnbRrc = nrGnbDevice->GetRrc();
-    bool ueManagerFound = gnbRrc->HasNrUeManager(rnti);
+    bool ueManagerFound = gnbRrc->HasUeManager(rnti);
     return ueManagerFound;
 }
 

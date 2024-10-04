@@ -568,8 +568,9 @@ class NrRrcConnectionRequestHeader : public NrRrcUlCcchMessage
     std::bitset<32> GetMtmsi() const;
 
   private:
-    std::bitset<8> m_mmec;   ///< MMEC
-    std::bitset<32> m_mTmsi; ///< TMSI
+    std::bitset<8> m_mmec;            ///< MMEC
+    std::bitset<32> m_mTmsi;          ///< TMSI
+    std::bitset<64> m_ueNetDevicePtr; ///< NrUeNetDevice raw pointer
 
     /// EstablishmentCause enumeration
     enum

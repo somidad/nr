@@ -91,6 +91,7 @@ class NrEpsBearer : public ObjectBase
      */
     enum Qci : uint8_t
     {
+        CCCH = 0,                  ///< non-standard CCCH QCI/Priority
         GBR_CONV_VOICE = 1,        ///< GBR Conversational Voice
         GBR_CONV_VIDEO = 2,        ///< GBR Conversational Video (Live streaming)
         GBR_GAMING = 3,            ///< GBR Real Time Gaming
