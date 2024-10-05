@@ -1013,7 +1013,7 @@ class NrSpectrumPhy : public SpectrumPhy
      * \brief typedef for NR SL transport block map per RNTI of TBs which are
      *        expected to be received after successful decoding of SCI stage-1.
      */
-    typedef std::unordered_map<uint16_t, TransportBlockInfo> SlTransportBlocks;
+    typedef std::unordered_map<uint16_t, SlTransportBlockInfo> SlTransportBlocks;
 
     SlTransportBlocks m_slTransportBlocks; //!< Map of type SlTransportBlocks
 

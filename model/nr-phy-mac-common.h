@@ -540,22 +540,9 @@ struct TransportBlockInfo
                                     //    Filled at the end of data rx/tx
     bool m_harqFeedbackSent{false}; //!< Indicate if the feedback has been sent for an entire TB
     Ptr<NrErrorModelOutput> m_outputOfEM; //!< Output of the Error Model (depends on the EM type)
-    SpectrumValue m_sinrPerceived; //!< SINR that is being update at the end of the DATA reception
-                                   //!< and is used for TB decoding
-    bool m_sinrUpdated{false};     //!< Flag to indicate the successful update of sinrPerceived
 
     double m_sinrAvg{0.0}; //!< AVG SINR (only for the RB used to transmit the TB)
     double m_sinrMin{0.0}; //!< MIN SINR (only between the RB used to transmit the TB)
-    bool m_isSci2Corrupted{
-        false}; //!< True if the ErrorModel indicates that the SCI stage 2 is corrupted.
-                //    Filled at the end of data rx/tx
-    bool m_isHarqEnabled{false}; //!< Indicate if the SCI2A header had HARQ enabled
-    Ptr<NrErrorModelOutput>
-        m_outputEmForData; //!< Output of the Error Model (depends on the EM type) for data
-    Ptr<NrErrorModelOutput>
-        m_outputEmForSci2; //!< Output of the Error Model (depends on the EM type) for SCI stage 2
-    uint32_t m_pktIndex{std::numeric_limits<uint32_t>::max()}; //!< Index of the TB in the \p
-                                                               //!< m_slRxSigParamInfo buffer
 };
 
 /**
@@ -685,35 +672,10 @@ struct UlHarqInfo : public HarqInfo
     }
 };
 
-/**
- * \ingroup utils
- * \brief A struct that contains info for the SL HARQ
- */
-struct SlHarqInfo : public HarqInfo
-{
-    uint16_t m_txRnti{55};     //!< Transmitter RNTI
-    uint16_t m_dstL2Id{65535}; //!< DST L2 ID
-
-    /**
-     * \brief Status of the SL Harq: ACKed or NACKed
-     */
-    enum HarqStatus
-    {
-        ACK,
-        NACK
-    } m_harqStatus{NACK}; //!< HARQ status
-
-    virtual bool IsReceivedOk() const override
-    {
-        return m_harqStatus == ACK;
-    }
-};
-
 std::ostream& operator<<(std::ostream& os, const DciInfoElementTdma& item);
 std::ostream& operator<<(std::ostream& os, const DciInfoElementTdma::DciFormat& item);
 std::ostream& operator<<(std::ostream& os, const DlHarqInfo& item);
 std::ostream& operator<<(std::ostream& os, const UlHarqInfo& item);
-std::ostream& operator<<(std::ostream& os, const SlHarqInfo& item);
 std::ostream& operator<<(std::ostream& os, const SfnSf& item);
 std::ostream& operator<<(std::ostream& os, const SlotAllocInfo& item);
 std::ostream& operator<<(std::ostream& os, const SlotAllocInfo::AllocationType& item);

@@ -7,7 +7,7 @@
 #ifndef NR_SL_UE_MAC_HARQ_H
 #define NR_SL_UE_MAC_HARQ_H
 
-#include "nr-phy-mac-common.h"
+#include "nr-sl-phy-mac-common.h"
 
 #include <ns3/nstime.h>
 #include <ns3/object.h>

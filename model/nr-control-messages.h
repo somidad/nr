@@ -8,6 +8,7 @@
 #define SRC_NR_MODEL_NR_CONTROL_MESSAGES_H_
 
 #include "nr-phy-mac-common.h"
+#include "nr-sl-phy-mac-common.h"
 
 #include <ns3/ff-mac-common.h>
 #include <ns3/lte-rrc-sap.h>

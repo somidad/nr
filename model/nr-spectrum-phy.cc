@@ -3017,7 +3017,7 @@ NrSpectrumPhy::AddSlExpectedTb(ExpectedTb expectedTb, uint16_t dstL2Id)
         return;
     }
     expectedTb.m_dstL2Id = dstL2Id;
-    TransportBlockInfo tbInfo({expectedTb});
+    SlTransportBlockInfo tbInfo({expectedTb});
 
     bool insertStatus =
         m_slTransportBlocks.emplace(std::make_pair(expectedTb.m_rnti, tbInfo)).second;
