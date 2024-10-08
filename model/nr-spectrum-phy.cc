@@ -67,6 +67,7 @@ operator<<(std::ostream& os, const enum NrSpectrumPhy::State state)
 NrSpectrumPhy::NrSpectrumPhy()
     : SpectrumPhy()
 {
+    NS_LOG_FUNCTION(this);
     m_interferenceData = CreateObject<NrInterference>();
     m_interferenceCtrl = CreateObject<NrInterference>();
     m_random = CreateObject<UniformRandomVariable>();
@@ -301,6 +302,7 @@ NrSpectrumPhy::SetPhySlHarqFeedbackCallback(const NrPhySlHarqFeedbackCallback& c
 void
 NrSpectrumPhy::SetDevice(Ptr<NetDevice> d)
 {
+    NS_LOG_FUNCTION(this << d);
     m_device = d;
     // It would be appropriate that the creation of interference for SRS is in the constructor.
     // But, in the constructor since the device is yet not configured we don't know if we
@@ -335,6 +337,7 @@ NrSpectrumPhy::GetDevice() const
 void
 NrSpectrumPhy::SetMobility(Ptr<MobilityModel> m)
 {
+    NS_LOG_FUNCTION(this << m);
     m_mobility = m;
 }
 
@@ -347,6 +350,7 @@ NrSpectrumPhy::GetMobility() const
 void
 NrSpectrumPhy::SetChannel(Ptr<SpectrumChannel> c)
 {
+    NS_LOG_FUNCTION(this << c);
     m_channel = c;
 }
 
@@ -359,7 +363,6 @@ NrSpectrumPhy::GetRxSpectrumModel() const
 Ptr<Object>
 NrSpectrumPhy::GetAntenna() const
 {
-    NS_LOG_FUNCTION(this);
     return m_antenna;
 }
 
@@ -368,6 +371,7 @@ NrSpectrumPhy::GetAntenna() const
 void
 NrSpectrumPhy::SetBeamManager(Ptr<BeamManager> b)
 {
+    NS_LOG_FUNCTION(this << b);
     m_beamManager = b;
 }
 
@@ -393,18 +397,21 @@ NrSpectrumPhy::GetErrorModel() const
 void
 NrSpectrumPhy::EnableDlDataPathlossTrace()
 {
+    NS_LOG_FUNCTION(this);
     m_enableDlDataPathlossTrace = true;
 }
 
 void
 NrSpectrumPhy::EnableDlCtrlPathlossTrace()
 {
+    NS_LOG_FUNCTION(this);
     m_enableDlCtrlPathlossTrace = true;
 }
 
 void
 NrSpectrumPhy::SetRnti(uint16_t rnti)
 {
+    NS_LOG_FUNCTION(this << rnti);
     m_rnti = rnti;
     m_hasRnti = true;
 }
@@ -434,12 +441,14 @@ NrSpectrumPhy::SetUnlicensedMode(bool unlicensedMode)
 void
 NrSpectrumPhy::SetDataErrorModelEnabled(bool dataErrorModelEnabled)
 {
+    NS_LOG_FUNCTION(this << dataErrorModelEnabled);
     m_dataErrorModelEnabled = dataErrorModelEnabled;
 }
 
 void
 NrSpectrumPhy::SetErrorModelType(TypeId errorModelType)
 {
+    NS_LOG_FUNCTION(this << errorModelType.GetName());
     m_errorModelType = errorModelType;
 }
 
@@ -464,6 +473,7 @@ NrSpectrumPhy::SetNoisePowerSpectralDensity(const Ptr<const SpectrumValue>& nois
 void
 NrSpectrumPhy::SetTxPowerSpectralDensity(const Ptr<SpectrumValue>& TxPsd)
 {
+    NS_LOG_FUNCTION(this << TxPsd);
     m_txPsd = TxPsd;
 }
 
@@ -750,6 +760,7 @@ void
 NrSpectrumPhy::StartTxDlControlFrames(const std::list<Ptr<NrControlMessage>>& ctrlMsgList,
                                       const Time& duration)
 {
+    NS_LOG_FUNCTION(this << duration.As(Time::S));
     NS_LOG_LOGIC(this << " state: " << m_state);
 
     switch (m_state)
@@ -801,6 +812,7 @@ void
 NrSpectrumPhy::StartTxUlControlFrames(const std::list<Ptr<NrControlMessage>>& ctrlMsgList,
                                       const Time& duration)
 {
+    NS_LOG_FUNCTION(this << duration.As(Time::S));
     NS_LOG_LOGIC(this << " state: " << m_state);
 
     switch (m_state)
@@ -849,7 +861,7 @@ NrSpectrumPhy::StartTxUlControlFrames(const std::list<Ptr<NrControlMessage>>& ct
 void
 NrSpectrumPhy::AddDataPowerChunkProcessor(const Ptr<LteChunkProcessor>& p)
 {
-    NS_LOG_FUNCTION(this);
+    NS_LOG_FUNCTION(this << p);
     m_interferenceData->AddRsPowerChunkProcessor(p);
 }
 
@@ -1525,6 +1537,7 @@ NrSpectrumPhy::SendDlHarqFeedback(uint16_t rnti, TransportBlockInfo& tbInfo)
 void
 NrSpectrumPhy::ProcessReceivedPacketBurst()
 {
+    NS_LOG_FUNCTION(this);
     Ptr<NrGnbNetDevice> enbRx = DynamicCast<NrGnbNetDevice>(GetDevice());
     Ptr<NrUeNetDevice> ueRx = DynamicCast<NrUeNetDevice>(GetDevice());
     std::map<uint16_t, DlHarqInfo> harqDlInfoMap;
@@ -1815,6 +1828,7 @@ NrSpectrumPhy::AddDataMimoChunkProcessor(const Ptr<NrMimoChunkProcessor>& p)
 void
 NrSpectrumPhy::SetSlErrorModelType(TypeId errorModelType)
 {
+    NS_LOG_FUNCTION(this);
     m_slErrorModelType = errorModelType;
 }
 
@@ -1828,31 +1842,35 @@ NrSpectrumPhy::SetSlErrorModel(Ptr<NrErrorModel> slErrorModel)
 void
 NrSpectrumPhy::DropTbOnRbOnCollision(bool drop)
 {
+    NS_LOG_FUNCTION(this << drop);
     m_dropTbOnRbCollisionEnabled = drop;
 }
 
 void
 NrSpectrumPhy::SetSlDataErrorModelEnabled(bool slDataErrorModelEnabled)
 {
+    NS_LOG_FUNCTION(this << slDataErrorModelEnabled);
     m_slDataErrorModelEnabled = slDataErrorModelEnabled;
 }
 
 void
 NrSpectrumPhy::SetSlCtrlErrorModelEnabled(bool slCtrlErrorModelEnabled)
 {
+    NS_LOG_FUNCTION(this << slCtrlErrorModelEnabled);
     m_slCtrlErrorModelEnabled = slCtrlErrorModelEnabled;
 }
 
 void
 NrSpectrumPhy::AddSlSinrChunkProcessor(Ptr<NrSlChunkProcessor> p)
 {
-    NS_LOG_FUNCTION(this);
+    NS_LOG_FUNCTION(this << p);
     m_slInterference->AddSinrChunkProcessor(p);
 }
 
 void
 NrSpectrumPhy::AddSlSignalChunkProcessor(Ptr<NrSlChunkProcessor> p)
 {
+    NS_LOG_FUNCTION(this << p);
     m_slInterference->AddRsPowerChunkProcessor(p);
 }
 
