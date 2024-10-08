@@ -44,6 +44,8 @@
 #include <ns3/nr-sl-helper.h>
 #include <ns3/nr-sl-ue-mac-harq.h>
 #include <ns3/nr-sl-ue-mac-scheduler-fixed-mcs.h>
+#include <ns3/nr-sl-ue-mac.h>
+#include <ns3/nr-sl-ue-phy.h>
 #include <ns3/nr-spectrum-phy.h>
 #include <ns3/nr-ue-mac.h>
 #include <ns3/nr-ue-net-device.h>
@@ -875,6 +877,7 @@ TestSidelinkHarq::DoRun()
     // NR configuration
     Ptr<NrPointToPointEpcHelper> epcHelper = CreateObject<NrPointToPointEpcHelper>();
     Ptr<NrHelper> nrHelper = CreateObject<NrHelper>();
+    nrHelper->SetUePhyTypeId(NrSlUePhy::GetTypeId());
     nrHelper->SetUeMacTypeId(NrSlUeMac::GetTypeId());
     nrHelper->SetEpcHelper(epcHelper);
 

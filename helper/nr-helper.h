@@ -520,6 +520,13 @@ class NrHelper : public Object
     void SetSchedulerAttribute(const std::string& n, const AttributeValue& v);
 
     /**
+     * \brief Set the TypeId of the NrUePhy to create
+     *
+     * \param tid The TypeId of the NrUePhy or a subclass
+     */
+    void SetUePhyTypeId(TypeId tid);
+
+    /**
      * \brief Set an attribute for the UE PHY, before it is created.
      *
      * \param n the name of the attribute

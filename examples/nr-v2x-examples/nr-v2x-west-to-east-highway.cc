@@ -731,6 +731,7 @@ main(int argc, char* argv[])
     nrHelper->SetUeAntennaAttribute("AntennaElement",
                                     PointerValue(CreateObject<IsotropicAntennaModel>()));
 
+    nrHelper->SetUePhyTypeId(NrSlUePhy::GetTypeId());
     nrHelper->SetUePhyAttribute("TxPower", DoubleValue(txPower));
 
     nrHelper->SetUeMacTypeId(NrSlUeMac::GetTypeId());

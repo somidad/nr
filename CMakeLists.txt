@@ -138,6 +138,7 @@ set(source_files
     model/nr-sl-ue-mac-scheduler-lcg.cc
     model/nr-sl-ue-mac-scheduler-fixed-mcs.cc
     model/nr-sl-ue-phy-sap.cc
+    model/nr-sl-ue-phy.cc
     utils/distance-based-three-gpp-spectrum-propagation-loss-model.cc
     utils/traffic-generators/helper/traffic-generator-helper.cc
     utils/traffic-generators/model/traffic-generator.cc
@@ -281,6 +282,7 @@ set(header_files
     model/nr-sl-ue-mac-scheduler-lcg.h
     model/nr-sl-ue-mac-scheduler-fixed-mcs.h
     model/nr-sl-ue-phy-sap.h
+    model/nr-sl-ue-phy.h
     utils/distance-based-three-gpp-spectrum-propagation-loss-model.h
     utils/traffic-generators/model/traffic-generator.h
     utils/traffic-generators/model/traffic-generator-ftp-single.h

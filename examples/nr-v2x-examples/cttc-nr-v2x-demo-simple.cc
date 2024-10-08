@@ -460,6 +460,8 @@ main(int argc, char* argv[])
     nrHelper->SetUeAntennaAttribute("AntennaElement",
                                     PointerValue(CreateObject<IsotropicAntennaModel>()));
 
+    // NR Sidelink UE PHY
+    nrHelper->SetUePhyTypeId(NrSlUePhy::GetTypeId());
     nrHelper->SetUePhyAttribute("TxPower", DoubleValue(txPower));
 
     // NR Sidelink attribute of UE MAC, which are would be common for all the UEs
