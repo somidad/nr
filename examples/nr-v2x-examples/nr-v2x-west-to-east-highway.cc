@@ -733,6 +733,7 @@ main(int argc, char* argv[])
 
     nrHelper->SetUePhyTypeId(NrSlUePhy::GetTypeId());
     nrHelper->SetUePhyAttribute("TxPower", DoubleValue(txPower));
+    nrHelper->SetUeSpectrumTypeId(NrSlSpectrumPhy::GetTypeId());
 
     nrHelper->SetUeMacTypeId(NrSlUeMac::GetTypeId());
     nrHelper->SetUeMacAttribute("EnableSensing", BooleanValue(enableSensing));

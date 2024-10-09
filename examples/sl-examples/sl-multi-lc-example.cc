@@ -403,6 +403,7 @@ main(int argc, char* argv[])
                                     PointerValue(CreateObject<IsotropicAntennaModel>()));
     nrHelper->SetUePhyTypeId(NrSlUePhy::GetTypeId());
     nrHelper->SetUePhyAttribute("TxPower", DoubleValue(txPower));
+    nrHelper->SetUeSpectrumTypeId(NrSlSpectrumPhy::GetTypeId());
 
     // NR Sidelink attribute of UE MAC, which are common for all the UEs
     nrHelper->SetUeMacTypeId(NrSlUeMac::GetTypeId());

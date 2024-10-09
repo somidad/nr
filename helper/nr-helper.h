@@ -482,6 +482,13 @@ class NrHelper : public Object
     void SetGnbSpectrumAttribute(const std::string& n, const AttributeValue& v);
 
     /**
+     * \brief Set the TypeId of the NrSpectrumPhy to create
+     *
+     * \param tid The TypeId of the NrSpectrumPhy or a subclass
+     */
+    void SetUeSpectrumTypeId(TypeId tid);
+
+    /**
      * \brief Set an attribute for the UE spectrum, before it is created.
      *
      * \param n the name of the attribute

@@ -14,7 +14,7 @@
 
 #include "nr-sl-ue-phy.h"
 
-#include "nr-spectrum-phy.h"
+#include "nr-sl-spectrum-phy.h"
 #include "nr-ue-net-device.h"
 
 #include <ns3/lte-radio-bearer-tag.h>
@@ -89,7 +89,9 @@ NrSlUePhy::StartSlot(const SfnSf& s)
      * As per the 3GPP standard, a device might prioritize RX over TX as per
      * the priority or vice versa.
      */
-    m_spectrumPhy->ClearExpectedSlTb();
+    auto slSpectrumPhy = m_spectrumPhy->GetObject<NrSlSpectrumPhy>();
+    NS_ASSERT_MSG(slSpectrumPhy, "Did not find NrSlSpectrumPhy object");
+    slSpectrumPhy->ClearExpectedSlTb();
 
     SendSlExpectedTbInfo(s);
 
@@ -338,7 +340,9 @@ NrSlUePhy::SendNrSlCtrlChannels(const Ptr<PacketBurst>& pb,
 
     SetSubChannelsForTransmission(channelRbs, varTtiInfo.symLength);
     NS_LOG_DEBUG("Sending PSCCH on SfnSf " << GetCurrentSfnSf());
-    m_spectrumPhy->StartTxSlCtrlFrames(pb, varTtiDuration);
+    auto slSpectrumPhy = m_spectrumPhy->GetObject<NrSlSpectrumPhy>();
+    NS_ASSERT_MSG(slSpectrumPhy, "Did not find NrSlSpectrumPhy object");
+    slSpectrumPhy->StartTxSlCtrlFrames(pb, varTtiDuration);
 }
 
 Time
@@ -399,7 +403,9 @@ NrSlUePhy::SendNrSlDataChannels(const Ptr<PacketBurst>& pb,
     SetSubChannelsForTransmission(channelRbs, varTtiInfo.symLength);
     NS_LOG_DEBUG("Sending PSSCH on SfnSf " << GetCurrentSfnSf());
     // Assume Sl Data channel is sent through the first stream
-    m_spectrumPhy->StartTxSlDataFrames(pb, varTtiDuration);
+    auto slSpectrumPhy = m_spectrumPhy->GetObject<NrSlSpectrumPhy>();
+    NS_ASSERT_MSG(slSpectrumPhy, "Did not find NrSlSpectrumPhy object");
+    slSpectrumPhy->StartTxSlDataFrames(pb, varTtiDuration);
 }
 
 Time
@@ -514,7 +520,9 @@ NrSlUePhy::SendNrSlFbChannels(const std::list<Ptr<NrSlHarqFeedbackMessage>>& fee
 
     SetSubChannelsForTransmission(channelRbs, varTtiInfo.symLength);
     NS_LOG_DEBUG("Sending PSFCH on SfnSf " << GetCurrentSfnSf());
-    m_spectrumPhy->StartTxSlFeedback(feedbackList, varTtiDuration);
+    auto slSpectrumPhy = m_spectrumPhy->GetObject<NrSlSpectrumPhy>();
+    NS_ASSERT_MSG(slSpectrumPhy, "Did not find NrSlSpectrumPhy object");
+    slSpectrumPhy->StartTxSlFeedback(feedbackList, varTtiDuration);
 }
 
 void
@@ -567,7 +575,9 @@ NrSlUePhy::PhyPscchPduReceived(const Ptr<Packet>& p, const SpectrumValue& psd)
         NS_LOG_INFO("Received first stage SCI for destination " << *it << " from RNTI "
                                                                 << tag.GetRnti());
         // Assume first stream
-        m_spectrumPhy->AddSlExpectedTb({UINT8_MAX,
+        auto slSpectrumPhy = m_spectrumPhy->GetObject<NrSlSpectrumPhy>();
+        NS_ASSERT_MSG(slSpectrumPhy, "Did not find NrSlSpectrumPhy object");
+        slSpectrumPhy->AddSlExpectedTb({UINT8_MAX,
                                         tag.GetTbSize(),
                                         sciF1a.GetMcs(),
                                         UINT8_MAX,
@@ -666,7 +676,9 @@ NrSlUePhy::SendSlExpectedTbInfo(const SfnSf& s)
         if (expectedTbInfo.sfn == s)
         {
             m_slRxGrants.pop_front();
-            m_spectrumPhy->AddSlExpectedTb({UINT8_MAX,
+            auto slSpectrumPhy = m_spectrumPhy->GetObject<NrSlSpectrumPhy>();
+            NS_ASSERT_MSG(slSpectrumPhy, "Did not find NrSlSpectrumPhy object");
+            slSpectrumPhy->AddSlExpectedTb({UINT8_MAX,
                                             expectedTbInfo.tbSize,
                                             expectedTbInfo.mcs,
                                             UINT8_MAX,

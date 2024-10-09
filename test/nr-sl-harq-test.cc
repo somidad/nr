@@ -42,11 +42,11 @@
 #include <ns3/nr-sl-comm-resource-pool-factory.h>
 #include <ns3/nr-sl-comm-resource-pool.h>
 #include <ns3/nr-sl-helper.h>
+#include <ns3/nr-sl-spectrum-phy.h>
 #include <ns3/nr-sl-ue-mac-harq.h>
 #include <ns3/nr-sl-ue-mac-scheduler-fixed-mcs.h>
 #include <ns3/nr-sl-ue-mac.h>
 #include <ns3/nr-sl-ue-phy.h>
-#include <ns3/nr-spectrum-phy.h>
 #include <ns3/nr-ue-mac.h>
 #include <ns3/nr-ue-net-device.h>
 #include <ns3/nr-ue-phy.h>
@@ -879,6 +879,7 @@ TestSidelinkHarq::DoRun()
     Ptr<NrHelper> nrHelper = CreateObject<NrHelper>();
     nrHelper->SetUePhyTypeId(NrSlUePhy::GetTypeId());
     nrHelper->SetUeMacTypeId(NrSlUeMac::GetTypeId());
+    nrHelper->SetUeSpectrumTypeId(NrSlSpectrumPhy::GetTypeId());
     nrHelper->SetEpcHelper(epcHelper);
 
     BandwidthPartInfoPtrVector allBwps;
@@ -962,7 +963,7 @@ TestSidelinkHarq::DoRun()
     {
         // Install error vector override on first UE receiver
         Ptr<NrUeNetDevice> dev = ueNetDevices.Get(1)->GetObject<NrUeNetDevice>();
-        Ptr<NrSpectrumPhy> sPhy = dev->GetPhy(0)->GetSpectrumPhy();
+        Ptr<NrSlSpectrumPhy> sPhy = dev->GetPhy(0)->GetSpectrumPhy()->GetObject<NrSlSpectrumPhy>();
         NS_ABORT_MSG_UNLESS(sPhy, "No NrSpectrumPhy pointer");
         Ptr<SlHarqTestErrorModel> slHarqTestErrorModel = CreateObject<SlHarqTestErrorModel>();
         slHarqTestErrorModel->SetTblerVector(m_tblerVector);

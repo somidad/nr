@@ -1384,6 +1384,13 @@ NrHelper::SetGnbSpectrumAttribute(const std::string& n, const AttributeValue& v)
 }
 
 void
+NrHelper::SetUeSpectrumTypeId(TypeId tid)
+{
+    NS_LOG_FUNCTION(this << GetTypeId().GetName());
+    m_ueSpectrumFactory.SetTypeId(tid);
+}
+
+void
 NrHelper::SetUeSpectrumAttribute(const std::string& n, const AttributeValue& v)
 {
     NS_LOG_FUNCTION(this);

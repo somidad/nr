@@ -463,6 +463,7 @@ main(int argc, char* argv[])
     // NR Sidelink UE PHY
     nrHelper->SetUePhyTypeId(NrSlUePhy::GetTypeId());
     nrHelper->SetUePhyAttribute("TxPower", DoubleValue(txPower));
+    nrHelper->SetUeSpectrumTypeId(NrSlSpectrumPhy::GetTypeId());
 
     // NR Sidelink attribute of UE MAC, which are would be common for all the UEs
     nrHelper->SetUeMacTypeId(NrSlUeMac::GetTypeId());

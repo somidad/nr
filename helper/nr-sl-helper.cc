@@ -25,7 +25,7 @@
 #include <ns3/nr-sl-ue-mac.h>
 #include <ns3/nr-sl-ue-phy.h>
 #include <ns3/nr-sl-ue-rrc.h>
-#include <ns3/nr-spectrum-phy.h>
+#include <ns3/nr-sl-spectrum-phy.h>
 #include <ns3/nr-ue-mac.h>
 #include <ns3/nr-ue-net-device.h>
 #include <ns3/nr-ue-phy.h>
@@ -200,16 +200,17 @@ NrSlHelper::PrepareSingleUeForSidelink(Ptr<NrUeNetDevice> nrUeDev,
         nrSlUePhy->SetNrSlUePhySapUser(nrSlUeMac->GetNrSlUePhySapUser());
         nrSlUeMac->SetNrSlUePhySapProvider(nrSlUePhy->GetNrSlUePhySapProvider());
         // Error model type in NRSpectrumPhy for NR SL
-        Ptr<NrSpectrumPhy> spectrumPhy = nrSlUePhy->GetSpectrumPhy();
+        Ptr<NrSlSpectrumPhy> spectrumPhy = nrSlUePhy->GetSpectrumPhy()->GetObject<NrSlSpectrumPhy>();
+        NS_ASSERT_MSG(spectrumPhy, "Did not find NrSlSpectrumPhy object");
         spectrumPhy->SetAttribute("SlErrorModelType", typeIdValue);
-        // Set AMC in NrSpectrumPhy to compute PSCCH TB size
+        // Set AMC in NrSlSpectrumPhy to compute PSCCH TB size
         spectrumPhy->SetSlAmc(slAmc);
         // Set SL chunk processor
         Ptr<NrSlChunkProcessor> pSlSinr = Create<NrSlChunkProcessor>();
-        pSlSinr->AddCallback(MakeCallback(&NrSpectrumPhy::UpdateSlSinrPerceived, spectrumPhy));
+        pSlSinr->AddCallback(MakeCallback(&NrSlSpectrumPhy::UpdateSlSinrPerceived, spectrumPhy));
         spectrumPhy->AddSlSinrChunkProcessor(pSlSinr);
         Ptr<NrSlChunkProcessor> pSlSignal = Create<NrSlChunkProcessor>();
-        pSlSignal->AddCallback(MakeCallback(&NrSpectrumPhy::UpdateSlSignalPerceived, spectrumPhy));
+        pSlSignal->AddCallback(MakeCallback(&NrSlSpectrumPhy::UpdateSlSignalPerceived, spectrumPhy));
         spectrumPhy->AddSlSignalChunkProcessor(pSlSignal);
 
         std::function<void(const Ptr<Packet>&, const SpectrumValue&)> pscchPhyPduCallback;
