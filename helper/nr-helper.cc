@@ -585,8 +585,6 @@ NrHelper::CreateUePhy(const Ptr<Node>& n,
 
     if (m_harqEnabled)
     {
-        Ptr<NrHarqPhy> harq = Create<NrHarqPhy>(); // Create HARQ instance
-        channelPhy->InstallHarqPhyModule(harq);
         channelPhy->SetPhyDlHarqFeedbackCallback(dlHarqCallback);
     }
     channelPhy->SetIsEnb(false);
@@ -956,8 +954,6 @@ NrHelper::CreateGnbPhy(const Ptr<Node>& n,
     channelPhy->SetAntenna(antenna);
     cam->SetNrSpectrumPhy(channelPhy);
 
-    channelPhy->InstallHarqPhyModule(
-        Create<NrHarqPhy>()); // there should be one HARQ instance per NrSpectrumPhy
     channelPhy->SetIsEnb(true);
     channelPhy->SetDevice(dev); // each NrSpectrumPhy should have a pointer to device
     channelPhy->SetChannel(

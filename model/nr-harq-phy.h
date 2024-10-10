@@ -9,8 +9,6 @@
 
 #include "nr-error-model.h"
 
-#include <ns3/simple-ref-count.h>
-
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -26,11 +24,11 @@ namespace ns3
  * (i.e., decodification buffers for incremental redundancy management)
  *
  */
-class NrHarqPhy : public SimpleRefCount<NrHarqPhy>
+class NrHarqPhy
 {
   public:
     /**
-     * \brief Constructor
+     * \brief Destructor
      */
     ~NrHarqPhy();
 
