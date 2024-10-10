@@ -435,7 +435,6 @@ main(int argc, char* argv[])
 
     /**************************** SL configuration *****************************/
     Ptr<NrSlHelper> nrSlHelper = CreateObject<NrSlHelper>();
-    nrSlHelper->SetEpcHelper(epcHelper);
 
     // SL error model
     std::string errorModel = "ns3::NrEesmIrT1";

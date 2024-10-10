@@ -520,14 +520,8 @@ main(int argc, char* argv[])
      * NR Sidelink, i.e., V2X simulation:
      * - NrSlHelper, which will configure the UEs protocol stack to be ready to
      *   perform Sidelink related procedures.
-     * - EpcHelper, which takes care of triggering the call to EpcUeNas class
-     *   to establish the NR Sidelink bearer (s). We note that, at this stage
-     *   just communicate the pointer of already instantiated EpcHelper object,
-     *   which is the same pointer communicated to the NrHelper above.
      */
     Ptr<NrSlHelper> nrSlHelper = CreateObject<NrSlHelper>();
-    // Put the pointers inside NrSlHelper
-    nrSlHelper->SetEpcHelper(epcHelper);
 
     /*
      * Set the SL error model and AMC

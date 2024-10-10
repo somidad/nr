@@ -947,8 +947,6 @@ TestSidelinkHarq::DoRun()
     }
 
     Ptr<NrSlHelper> nrSlHelper = CreateObject<NrSlHelper>();
-    // Put the pointers inside NrSlHelper
-    nrSlHelper->SetEpcHelper(epcHelper);
 
     std::string errorModel = "ns3::test::SlHarqTestErrorModel";
     nrSlHelper->SetSlErrorModel(errorModel);

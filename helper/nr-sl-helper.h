@@ -16,7 +16,6 @@ namespace ns3
 
 class NrUeNetDevice;
 class NrAmc;
-class NrPointToPointEpcHelper;
 class LteSlTft;
 class NrSlUeMacScheduler;
 
@@ -79,12 +78,6 @@ class NrSlHelper : public Object
      *
      */
     void SetSlErrorModel(const std::string& errorModelTypeId);
-    /**
-     * \brief Set EPC helper
-     *
-     * \param epcHelper Ptr of type NrPointToPointEpcHelper
-     */
-    void SetEpcHelper(const Ptr<NrPointToPointEpcHelper>& epcHelper);
     /**
      * \brief Schedule the activation of a NR sidelink bearer
      *
@@ -186,9 +179,8 @@ class NrSlHelper : public Object
      */
     Ptr<NrAmc> CreateUeSlAmc() const;
 
-    ObjectFactory m_ueSlAmcFactory;           //!< UE SL AMC Object factory
-    ObjectFactory m_ueSlSchedulerFactory;     //!< UE SL scheduler Object factory
-    Ptr<NrPointToPointEpcHelper> m_epcHelper; //!< the EPC helper
+    ObjectFactory m_ueSlAmcFactory;       //!< UE SL AMC Object factory
+    ObjectFactory m_ueSlSchedulerFactory; //!< UE SL scheduler Object factory
 };
 
 } // namespace ns3

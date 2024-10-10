@@ -6,8 +6,6 @@
 
 #include "nr-sl-helper.h"
 
-#include "nr-point-to-point-epc-helper.h"
-
 #include <ns3/abort.h>
 #include <ns3/bandwidth-part-ue.h>
 #include <ns3/epc-ue-nas.h>
@@ -20,12 +18,12 @@
 #include <ns3/nr-amc.h>
 #include <ns3/nr-sl-bwp-manager-ue.h>
 #include <ns3/nr-sl-chunk-processor.h>
+#include <ns3/nr-sl-spectrum-phy.h>
 #include <ns3/nr-sl-ue-mac-scheduler-fixed-mcs.h>
 #include <ns3/nr-sl-ue-mac-scheduler.h>
 #include <ns3/nr-sl-ue-mac.h>
 #include <ns3/nr-sl-ue-phy.h>
 #include <ns3/nr-sl-ue-rrc.h>
-#include <ns3/nr-sl-spectrum-phy.h>
 #include <ns3/nr-ue-mac.h>
 #include <ns3/nr-ue-net-device.h>
 #include <ns3/nr-ue-phy.h>
@@ -96,18 +94,9 @@ NrSlHelper::CreateUeSlAmc() const
 }
 
 void
-NrSlHelper::SetEpcHelper(const Ptr<NrPointToPointEpcHelper>& epcHelper)
-{
-    NS_LOG_FUNCTION(this);
-    m_epcHelper = epcHelper;
-}
-
-void
 NrSlHelper::ActivateNrSlBearer(Time activationTime, NetDeviceContainer ues, const Ptr<LteSlTft> tft)
 {
     NS_LOG_FUNCTION(this);
-    NS_ASSERT_MSG(m_epcHelper,
-                  "NR Sidelink activation requires EpcHelper to be registered with the NrSlHelper");
     Simulator::Schedule(activationTime, &NrSlHelper::DoActivateNrSlBearer, this, ues, tft);
 }
 
@@ -200,7 +189,8 @@ NrSlHelper::PrepareSingleUeForSidelink(Ptr<NrUeNetDevice> nrUeDev,
         nrSlUePhy->SetNrSlUePhySapUser(nrSlUeMac->GetNrSlUePhySapUser());
         nrSlUeMac->SetNrSlUePhySapProvider(nrSlUePhy->GetNrSlUePhySapProvider());
         // Error model type in NRSpectrumPhy for NR SL
-        Ptr<NrSlSpectrumPhy> spectrumPhy = nrSlUePhy->GetSpectrumPhy()->GetObject<NrSlSpectrumPhy>();
+        Ptr<NrSlSpectrumPhy> spectrumPhy =
+            nrSlUePhy->GetSpectrumPhy()->GetObject<NrSlSpectrumPhy>();
         NS_ASSERT_MSG(spectrumPhy, "Did not find NrSlSpectrumPhy object");
         spectrumPhy->SetAttribute("SlErrorModelType", typeIdValue);
         // Set AMC in NrSlSpectrumPhy to compute PSCCH TB size
@@ -210,7 +200,8 @@ NrSlHelper::PrepareSingleUeForSidelink(Ptr<NrUeNetDevice> nrUeDev,
         pSlSinr->AddCallback(MakeCallback(&NrSlSpectrumPhy::UpdateSlSinrPerceived, spectrumPhy));
         spectrumPhy->AddSlSinrChunkProcessor(pSlSinr);
         Ptr<NrSlChunkProcessor> pSlSignal = Create<NrSlChunkProcessor>();
-        pSlSignal->AddCallback(MakeCallback(&NrSlSpectrumPhy::UpdateSlSignalPerceived, spectrumPhy));
+        pSlSignal->AddCallback(
+            MakeCallback(&NrSlSpectrumPhy::UpdateSlSignalPerceived, spectrumPhy));
         spectrumPhy->AddSlSignalChunkProcessor(pSlSignal);
 
         std::function<void(const Ptr<Packet>&, const SpectrumValue&)> pscchPhyPduCallback;
