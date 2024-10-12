@@ -309,7 +309,6 @@ class TestSidelinkHarq : public TestCase
      *
      */
     virtual void ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
-                               Ptr<NrPointToPointEpcHelper> epcHelper,
                                const NodeContainer& ueContainer,
                                const NetDeviceContainer& ueNetDevices,
                                Ipv4Address groupAddress4,
@@ -525,7 +524,6 @@ TestSidelinkHarq::ConfigureApplications(Address remoteAddress,
 
 void
 TestSidelinkHarq::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
-                                Ptr<NrPointToPointEpcHelper> epcHelper,
                                 const NodeContainer& ueContainer,
                                 const NetDeviceContainer& ueNetDevices,
                                 Ipv4Address groupAddress4,
@@ -547,21 +545,20 @@ TestSidelinkHarq::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
     slInfo.m_pdb = Seconds(0); // NrSlUeMac::T2 will be used
     if (!m_useIpv6)
     {
-        Ipv4InterfaceContainer ueIpIface;
-        ueIpIface = epcHelper->AssignUeIpv4Address(ueNetDevices);
-        // set the default gateway for the UE
-        Ipv4StaticRoutingHelper ipv4RoutingHelper;
-        for (uint32_t u = 0; u < ueContainer.GetN(); ++u)
-        {
-            Ptr<Node> ueNode = ueContainer.Get(u);
-            // Set the default gateway for the UE
-            Ptr<Ipv4StaticRouting> ueStaticRouting =
-                ipv4RoutingHelper.GetStaticRouting(ueNode->GetObject<Ipv4>());
-            ueStaticRouting->SetDefaultRoute(epcHelper->GetUeDefaultGatewayAddress(), 1);
-        }
+        Ipv4AddressHelper addrHelper;
+        addrHelper.SetBase("7.0.0.0", "255.0.0.0");
+        auto ueIpIface = addrHelper.Assign(ueNetDevices);
         localAddress = InetSocketAddress(Ipv4Address::GetAny(), port);
         if (m_castType == "groupcast" || m_castType == "broadcast")
         {
+            Ipv4StaticRoutingHelper ipv4RoutingHelper;
+            Ipv4InterfaceContainer::Iterator i;
+            for (i = ueIpIface.Begin(); i != ueIpIface.End(); ++i)
+            {
+                const auto [ipv4, index] = *i;
+                auto ueStaticRouting = ipv4RoutingHelper.GetStaticRouting(ipv4);
+                ueStaticRouting->SetDefaultMulticastRoute(index);
+            }
             slInfo.m_dstL2Id = 224;
             remoteAddress = InetSocketAddress(groupAddress4, port);
             // The first node is a transmitter; others are receivers
@@ -596,22 +593,21 @@ TestSidelinkHarq::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
     }
     else
     {
-        Ipv6InterfaceContainer ueIpIface;
-        ueIpIface = epcHelper->AssignUeIpv6Address(ueNetDevices);
-
-        // set the default gateway for the UE
-        Ipv6StaticRoutingHelper ipv6RoutingHelper;
-        for (uint32_t u = 0; u < ueContainer.GetN(); ++u)
-        {
-            Ptr<Node> ueNode = ueContainer.Get(u);
-            // Set the default gateway for the UE
-            Ptr<Ipv6StaticRouting> ueStaticRouting =
-                ipv6RoutingHelper.GetStaticRouting(ueNode->GetObject<Ipv6>());
-            ueStaticRouting->SetDefaultRoute(epcHelper->GetUeDefaultGatewayAddress6(), 1);
-        }
+        Ipv6AddressHelper addrHelper;
+        // we use a /64 IPv6 net all UEs
+        addrHelper.SetBase("7777:f00d::", Ipv6Prefix(64));
+        auto ueIpIface = addrHelper.Assign(ueNetDevices);
         localAddress = Inet6SocketAddress(Ipv6Address::GetAny(), port);
         if (m_castType == "groupcast" || m_castType == "broadcast")
         {
+            Ipv6StaticRoutingHelper ipv6RoutingHelper;
+            Ipv6InterfaceContainer::Iterator i;
+            for (i = ueIpIface.Begin(); i != ueIpIface.End(); ++i)
+            {
+                const auto [ipv6, index] = *i;
+                auto ueStaticRouting = ipv6RoutingHelper.GetStaticRouting(ipv6);
+                ueStaticRouting->SetDefaultMulticastRoute(index);
+            }
             slInfo.m_dstL2Id = 224;
             remoteAddress = Inet6SocketAddress(groupAddress6, port);
             // The first node is a transmitter; others are receivers
@@ -875,12 +871,10 @@ TestSidelinkHarq::DoRun()
     mobility.Install(ueContainer);
 
     // NR configuration
-    Ptr<NrPointToPointEpcHelper> epcHelper = CreateObject<NrPointToPointEpcHelper>();
     Ptr<NrHelper> nrHelper = CreateObject<NrHelper>();
     nrHelper->SetUePhyTypeId(NrSlUePhy::GetTypeId());
     nrHelper->SetUeMacTypeId(NrSlUeMac::GetTypeId());
     nrHelper->SetUeSpectrumTypeId(NrSlSpectrumPhy::GetTypeId());
-    nrHelper->SetEpcHelper(epcHelper);
 
     BandwidthPartInfoPtrVector allBwps;
     CcBwpCreator ccBwpCreator;
@@ -903,8 +897,6 @@ TestSidelinkHarq::DoRun()
 
     nrHelper->InitializeOperationBand(&bandSl);
     allBwps = CcBwpCreator::GetAllBwps({bandSl});
-
-    epcHelper->SetAttribute("S1uLinkDelay", TimeValue(MilliSeconds(0)));
 
     nrHelper->SetUeAntennaAttribute("NumRows", UintegerValue(1));
     nrHelper->SetUeAntennaAttribute("NumColumns", UintegerValue(2));
@@ -1080,7 +1072,6 @@ TestSidelinkHarq::DoRun()
     uint16_t port = 8000;
 
     ConfigureTfts(nrSlHelper,
-                  epcHelper,
                   ueContainer,
                   ueNetDevices,
                   groupAddress4,
@@ -1222,7 +1213,6 @@ class TestSidelinkHarqTwoSenders : public TestSidelinkHarq
   protected:
     // Documented in TestSidelinkHarq
     void ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
-                       Ptr<NrPointToPointEpcHelper> epcHelper,
                        const NodeContainer& ueContainer,
                        const NetDeviceContainer& ueNetDevices,
                        Ipv4Address groupAddress4,
@@ -1242,7 +1232,6 @@ class TestSidelinkHarqTwoSenders : public TestSidelinkHarq
 
 void
 TestSidelinkHarqTwoSenders::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
-                                          Ptr<NrPointToPointEpcHelper> epcHelper,
                                           const NodeContainer& ueContainer,
                                           const NetDeviceContainer& ueNetDevices,
                                           Ipv4Address groupAddress4,
@@ -1265,21 +1254,20 @@ TestSidelinkHarqTwoSenders::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
     slInfo.m_pdb = Seconds(0); // NrSlUeMac::T2 will be used
     if (!m_useIpv6)
     {
-        Ipv4InterfaceContainer ueIpIface;
-        ueIpIface = epcHelper->AssignUeIpv4Address(ueNetDevices);
-        // set the default gateway for the UE
-        Ipv4StaticRoutingHelper ipv4RoutingHelper;
-        for (uint32_t u = 0; u < ueContainer.GetN(); ++u)
-        {
-            Ptr<Node> ueNode = ueContainer.Get(u);
-            // Set the default gateway for the UE
-            Ptr<Ipv4StaticRouting> ueStaticRouting =
-                ipv4RoutingHelper.GetStaticRouting(ueNode->GetObject<Ipv4>());
-            ueStaticRouting->SetDefaultRoute(epcHelper->GetUeDefaultGatewayAddress(), 1);
-        }
+        Ipv4AddressHelper addrHelper;
+        addrHelper.SetBase("7.0.0.0", "255.0.0.0");
+        auto ueIpIface = addrHelper.Assign(ueNetDevices);
         localAddress = InetSocketAddress(Ipv4Address::GetAny(), port);
         if (m_castType == "groupcast" || m_castType == "broadcast")
         {
+            Ipv4StaticRoutingHelper ipv4RoutingHelper;
+            Ipv4InterfaceContainer::Iterator i;
+            for (i = ueIpIface.Begin(); i != ueIpIface.End(); ++i)
+            {
+                const auto [ipv4, index] = *i;
+                auto ueStaticRouting = ipv4RoutingHelper.GetStaticRouting(ipv4);
+                ueStaticRouting->SetDefaultMulticastRoute(index);
+            }
             slInfo.m_dstL2Id = 224;
             remoteAddress = InetSocketAddress(groupAddress4, port);
             // Two senders in this test case
@@ -1326,22 +1314,21 @@ TestSidelinkHarqTwoSenders::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
     }
     else
     {
-        Ipv6InterfaceContainer ueIpIface;
-        ueIpIface = epcHelper->AssignUeIpv6Address(ueNetDevices);
-
-        // set the default gateway for the UE
-        Ipv6StaticRoutingHelper ipv6RoutingHelper;
-        for (uint32_t u = 0; u < ueContainer.GetN(); ++u)
-        {
-            Ptr<Node> ueNode = ueContainer.Get(u);
-            // Set the default gateway for the UE
-            Ptr<Ipv6StaticRouting> ueStaticRouting =
-                ipv6RoutingHelper.GetStaticRouting(ueNode->GetObject<Ipv6>());
-            ueStaticRouting->SetDefaultRoute(epcHelper->GetUeDefaultGatewayAddress6(), 1);
-        }
+        Ipv6AddressHelper addrHelper;
+        // we use a /64 IPv6 net all UEs
+        addrHelper.SetBase("7777:f00d::", Ipv6Prefix(64));
+        auto ueIpIface = addrHelper.Assign(ueNetDevices);
         localAddress = Inet6SocketAddress(Ipv6Address::GetAny(), port);
         if (m_castType == "groupcast" || m_castType == "broadcast")
         {
+            Ipv6StaticRoutingHelper ipv6RoutingHelper;
+            Ipv6InterfaceContainer::Iterator i;
+            for (i = ueIpIface.Begin(); i != ueIpIface.End(); ++i)
+            {
+                const auto [ipv6, index] = *i;
+                auto ueStaticRouting = ipv6RoutingHelper.GetStaticRouting(ipv6);
+                ueStaticRouting->SetDefaultMulticastRoute(index);
+            }
             slInfo.m_dstL2Id = 224;
             remoteAddress = Inet6SocketAddress(groupAddress6, port);
             // Two senders in this test case

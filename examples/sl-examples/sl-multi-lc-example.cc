@@ -369,10 +369,7 @@ main(int argc, char* argv[])
     Packet::EnablePrinting();
 
     // Configure NR module
-    Ptr<NrPointToPointEpcHelper> epcHelper = CreateObject<NrPointToPointEpcHelper>();
-    epcHelper->SetAttribute("S1uLinkDelay", TimeValue(MilliSeconds(0)));
     Ptr<NrHelper> nrHelper = CreateObject<NrHelper>();
-    nrHelper->SetEpcHelper(epcHelper);
 
     /*
      * Spectrum division. We create one operational band, containing
@@ -552,9 +549,8 @@ main(int argc, char* argv[])
     internet.Install(ueNodeContainer);
     stream += internet.AssignStreams(ueNodeContainer, stream);
 
-    // Target IP
+    // Target multicast address; target unicast address set below
     Ipv4Address groupAddress4("225.0.0.0"); // use multicast address as destination
-    Ipv4Address unicastAddress4("7.0.0.3");
 
     /************************** Traffic flows configuration ********************/
     /*
@@ -687,19 +683,22 @@ main(int argc, char* argv[])
     Ptr<LteSlTft> tft3;
 
     // Assign IP address for the UEs
-    Ipv4InterfaceContainer ueIpIface;
-    ueIpIface = epcHelper->AssignUeIpv4Address(ueNetDev);
-    NS_LOG_DEBUG("Device 0 has address " << ueIpIface.GetAddress(0)); // 7.0.0.2
-    NS_LOG_DEBUG("Device 1 has address " << ueIpIface.GetAddress(1)); // 7.0.0.3
+    Ipv4AddressHelper addrHelper;
+    addrHelper.SetBase("7.0.0.0", "255.0.0.0");
+    auto ueIpIface = addrHelper.Assign(ueNetDev);
+    // Set target unicast address
+    Ipv4Address unicastAddress4 = ueIpIface.GetAddress(1); // should be 7.0.0.2
 
-    // Set the default gateway for the UEs
+    NS_LOG_DEBUG("Device 0 has address " << ueIpIface.GetAddress(0)); // 7.0.0.1
+    NS_LOG_DEBUG("Device 1 has address " << ueIpIface.GetAddress(1)); // 7.0.0.2
+
     Ipv4StaticRoutingHelper ipv4RoutingHelper;
-    for (uint32_t u = 0; u < ueNodeContainer.GetN(); ++u)
+    Ipv4InterfaceContainer::Iterator i;
+    for (i = ueIpIface.Begin(); i != ueIpIface.End(); ++i)
     {
-        Ptr<Node> ueNode = ueNodeContainer.Get(u);
-        Ptr<Ipv4StaticRouting> ueStaticRouting =
-            ipv4RoutingHelper.GetStaticRouting(ueNode->GetObject<Ipv4>());
-        ueStaticRouting->SetDefaultRoute(epcHelper->GetUeDefaultGatewayAddress(), 1);
+        const auto [ipv4, index] = *i;
+        auto ueStaticRouting = ipv4RoutingHelper.GetStaticRouting(ipv4);
+        ueStaticRouting->SetDefaultMulticastRoute(index);
     }
 
     // Create TFTs for each traffic profile and corresponding addresses/port

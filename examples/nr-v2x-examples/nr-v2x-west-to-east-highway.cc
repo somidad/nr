@@ -651,17 +651,10 @@ main(int argc, char* argv[])
                                                speed);
 
     /*
-     * Setup the NR module. We create the various helpers needed for the
-     * NR simulation:
-     * - EpcHelper, which will setup the core network
-     * - NrHelper, which takes care of creating and connecting the various
-     * part of the NR stack
+     * Setup the NR module. We create the NrHelper, which takes care of
+     * creating and connecting the various part of the NR stack
      */
-    Ptr<NrPointToPointEpcHelper> epcHelper = CreateObject<NrPointToPointEpcHelper>();
     Ptr<NrHelper> nrHelper = CreateObject<NrHelper>();
-
-    // Put the pointers inside nrHelper
-    nrHelper->SetEpcHelper(epcHelper);
 
     /*
      * Spectrum division. We create one operational band, containing
@@ -1005,18 +998,16 @@ main(int argc, char* argv[])
     slInfo.m_harqEnabled = harqEnabled;
     if (!useIPv6)
     {
-        Ipv4InterfaceContainer ueIpIface;
-        ueIpIface = epcHelper->AssignUeIpv4Address(allSlUesNetDeviceContainer);
-
-        // set the default gateway for the UE
+        Ipv4AddressHelper addrHelper;
+        addrHelper.SetBase("7.0.0.0", "255.0.0.0");
+        auto ueIpIface = addrHelper.Assign(allSlUesNetDeviceContainer);
         Ipv4StaticRoutingHelper ipv4RoutingHelper;
-        for (uint32_t u = 0; u < allSlUesContainer.GetN(); ++u)
+        Ipv4InterfaceContainer::Iterator i;
+        for (i = ueIpIface.Begin(); i != ueIpIface.End(); ++i)
         {
-            Ptr<Node> ueNode = allSlUesContainer.Get(u);
-            // Set the default gateway for the UE
-            Ptr<Ipv4StaticRouting> ueStaticRouting =
-                ipv4RoutingHelper.GetStaticRouting(ueNode->GetObject<Ipv4>());
-            ueStaticRouting->SetDefaultRoute(epcHelper->GetUeDefaultGatewayAddress(), 1);
+            const auto [ipv4, index] = *i;
+            auto ueStaticRouting = ipv4RoutingHelper.GetStaticRouting(ipv4);
+            ueStaticRouting->SetDefaultMulticastRoute(index);
         }
         remoteAddress = InetSocketAddress(groupAddress4, port);
         localAddress = InetSocketAddress(Ipv4Address::GetAny(), port);
@@ -1031,18 +1022,17 @@ main(int argc, char* argv[])
     }
     else
     {
-        Ipv6InterfaceContainer ueIpIface;
-        ueIpIface = epcHelper->AssignUeIpv6Address(allSlUesNetDeviceContainer);
-
-        // set the default gateway for the UE
+        Ipv6AddressHelper addrHelper;
+        // we use a /64 IPv6 net all UEs
+        addrHelper.SetBase("7777:f00d::", Ipv6Prefix(64));
+        auto ueIpIface = addrHelper.Assign(allSlUesNetDeviceContainer);
         Ipv6StaticRoutingHelper ipv6RoutingHelper;
-        for (uint32_t u = 0; u < allSlUesContainer.GetN(); ++u)
+        Ipv6InterfaceContainer::Iterator i;
+        for (i = ueIpIface.Begin(); i != ueIpIface.End(); ++i)
         {
-            Ptr<Node> ueNode = allSlUesContainer.Get(u);
-            // Set the default gateway for the UE
-            Ptr<Ipv6StaticRouting> ueStaticRouting =
-                ipv6RoutingHelper.GetStaticRouting(ueNode->GetObject<Ipv6>());
-            ueStaticRouting->SetDefaultRoute(epcHelper->GetUeDefaultGatewayAddress6(), 1);
+            const auto [ipv6, index] = *i;
+            auto ueStaticRouting = ipv6RoutingHelper.GetStaticRouting(ipv6);
+            ueStaticRouting->SetDefaultMulticastRoute(index);
         }
         remoteAddress = Inet6SocketAddress(groupAddress6, port);
         localAddress = Inet6SocketAddress(Ipv6Address::GetAny(), port);
