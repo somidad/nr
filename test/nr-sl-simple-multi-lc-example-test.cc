@@ -71,7 +71,7 @@ static ns3::ExampleAsTestSuite g_slMultiLcPrioBcast(
 // the groupcast and unicast flow will have equal priority value of 2, above that
 // of the broadcast (1).  Which one is selected will depend on a random variable
 // draw.  With RngRun=1, the groupcast (dstL2Id 254) will be scheduled first,
-// while with RngRun=2, the unicast one (dstL2Id 4) will be scheduled first.
+// while with RngRun=2, the unicast one (dstL2Id 2) will be scheduled first.
 static ns3::ExampleAsTestSuite g_slMultiLcPrioGcast(
     "sl-multi-lc-prio-gcast",
     "sl-multi-lc-example",
@@ -86,7 +86,7 @@ static ns3::ExampleAsTestSuite g_slMultiLcPrioUni(
 
 // This test illustrates that use of a non-uniform RRI prevents all LCs from
 // being scheduled in the same grant.  rriConfig=2 and schedTypeConfig=2 will allow
-// LCIDs 4 and 6, but not 5 (flow 2) to be scheduled in the same grant
+// LCIDs 5 and 7, but not 6 (flow 2) to be scheduled in the same grant
 // Since flow 2 has a smaller RRI, its packets arrive first and it is the
 // first to be scheduled (and saved in the reference log).
 static ns3::ExampleAsTestSuite g_slMultiLcRri("sl-multi-lc-rri",

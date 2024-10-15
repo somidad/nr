@@ -12,6 +12,7 @@
 #include "nr-bearer-stats-connector.h"
 #include "nr-mac-scheduling-stats.h"
 
+#include <ns3/epc-helper.h>
 #include <ns3/eps-bearer.h>
 #include <ns3/net-device-container.h>
 #include <ns3/node-container.h>
@@ -27,7 +28,6 @@ class NrGnbPhy;
 class SpectrumChannel;
 class NrSpectrumValueHelper;
 class NrGnbMac;
-class EpcHelper;
 class EpcTft;
 class NrBearerStatsCalculator;
 class NrMacRxTrace;
@@ -887,7 +887,7 @@ class NrHelper : public Object
      * \param stream first stream index to use
      * \return the number of stream indices (possibly zero) that have been assigned
      */
-    int64_t AssignStreams(NetDeviceContainer c, int64_t stream);
+    virtual int64_t AssignStreams(NetDeviceContainer c, int64_t stream);
 
     /// \brief parameters of the gNB or UE antenna arrays
     struct AntennaParams

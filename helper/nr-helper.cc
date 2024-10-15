@@ -19,7 +19,6 @@
 #include <ns3/bwp-manager-ue.h>
 #include <ns3/config.h>
 #include <ns3/epc-enb-application.h>
-#include <ns3/epc-helper.h>
 #include <ns3/epc-ue-nas.h>
 #include <ns3/epc-x2.h>
 #include <ns3/lte-chunk-processor.h>

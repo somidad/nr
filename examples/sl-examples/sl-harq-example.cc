@@ -304,7 +304,7 @@ main(int argc, char* argv[])
     mobility.Install(ueContainer);
 
     // NR configuration
-    Ptr<NrHelper> nrHelper = CreateObject<NrHelper>();
+    Ptr<NrSlHelper> nrHelper = CreateObject<NrSlHelper>();
 
     /*
      * Spectrum division. We create one operational band, containing
@@ -383,12 +383,10 @@ main(int argc, char* argv[])
     nrHelper->SetUeAntennaAttribute("AntennaElement",
                                     PointerValue(CreateObject<IsotropicAntennaModel>()));
 
-    nrHelper->SetUePhyTypeId(NrSlUePhy::GetTypeId());
     nrHelper->SetUePhyAttribute("TxPower", DoubleValue(txPower));
     nrHelper->SetUeSpectrumTypeId(NrSlSpectrumPhy::GetTypeId());
 
     // Sidelink attribute of UE MAC, which are would be common for all the UEs
-    nrHelper->SetUeMacTypeId(NrSlUeMac::GetTypeId());
     nrHelper->SetUeMacAttribute("EnableSensing", BooleanValue(false));
     nrHelper->SetUeMacAttribute("T1", UintegerValue(t1));
     nrHelper->SetUeMacAttribute("T2", UintegerValue(t2));
@@ -438,30 +436,22 @@ main(int argc, char* argv[])
     }
 
     /*
-     * Configure Sidelink. We create the following helpers needed for the
-     * Sidelink
-     * - NrSlHelper, which will configure the UEs protocol stack to be ready to
-     *   perform Sidelink related procedures.
-     */
-    Ptr<NrSlHelper> nrSlHelper = CreateObject<NrSlHelper>();
-
-    /*
      * Set the SL error model and AMC
      * Error model type: ns3::NrEesmCcT1, ns3::NrEesmCcT2, ns3::NrEesmIrT1,
      *                   ns3::NrEesmIrT2, ns3::NrLteMiErrorModel
      * AMC type: NrAmc::ShannonModel or NrAmc::ErrorModel
      */
     std::string errorModel = "ns3::NrEesmIrT1";
-    nrSlHelper->SetSlErrorModel(errorModel);
-    nrSlHelper->SetUeSlAmcAttribute("AmcModel", EnumValue(NrAmc::ErrorModel));
+    nrHelper->SetSlErrorModel(errorModel);
+    nrHelper->SetUeSlAmcAttribute("AmcModel", EnumValue(NrAmc::ErrorModel));
 
     /*
      * Set the SL scheduler attributes
      * In this example we use NrSlUeMacSchedulerSimple scheduler, which uses
      * a fixed MCS value
      */
-    nrSlHelper->SetNrSlSchedulerTypeId(NrSlUeMacSchedulerFixedMcs::GetTypeId());
-    nrSlHelper->SetUeSlSchedulerAttribute("Mcs", UintegerValue(14));
+    nrHelper->SetNrSlSchedulerTypeId(NrSlUeMacSchedulerFixedMcs::GetTypeId());
+    nrHelper->SetUeSlSchedulerAttribute("Mcs", UintegerValue(14));
 
     /*
      * Very important method to configure UE protocol stack, i.e., it would
@@ -469,7 +459,7 @@ main(int argc, char* argv[])
      * error model, configure AMC, and configure ChunkProcessor in Interference
      * API.
      */
-    nrSlHelper->PrepareUeForSidelink(ueNetDevices, bwpIdContainer);
+    nrHelper->PrepareUeForSidelink(ueNetDevices, bwpIdContainer);
 
     /*
      * Start preparing for all the sub Structs/RRC Information Element (IEs)
@@ -579,16 +569,17 @@ main(int argc, char* argv[])
     slPreConfigNr.slPreconfigFreqInfoList[0] = slFreConfigCommonNr;
 
     // Communicate the above pre-configuration to the NrSlHelper
-    nrSlHelper->InstallNrSlPreConfiguration(ueNetDevices, slPreConfigNr);
+    nrHelper->InstallNrSlPreConfiguration(ueNetDevices, slPreConfigNr);
 
     /****************************** End SL Configuration ***********************/
 
     /*
      * Fix the random streams
      */
-    int64_t stream = 1;
-    stream += nrHelper->AssignStreams(ueNetDevices, stream);
-    stream += nrSlHelper->AssignStreams(ueNetDevices, stream);
+    int64_t streamBase{1000};
+    int64_t streamsUsed{0};
+    streamsUsed = nrHelper->AssignStreams(ueNetDevices, streamBase);
+    NS_LOG_DEBUG("Used " << streamsUsed << " random variable streams in NrHelper");
 
     /*
      * Configure the IP stack, and activate NR sidelink bearer (s)
@@ -598,6 +589,9 @@ main(int argc, char* argv[])
 
     InternetStackHelper internet;
     internet.Install(ueContainer);
+    streamBase = 2000;
+    streamsUsed = internet.AssignStreams(ueContainer, streamBase);
+    NS_LOG_DEBUG("Used " << streamsUsed << " random variable streams in InternetStackHelper");
     uint32_t dstL2Id = 224;
     Ipv4Address groupAddress4("225.0.0.0"); // use multicast address as destination
     Ipv6Address groupAddress6("ff0e::1");   // use multicast address as destination
@@ -643,12 +637,12 @@ main(int argc, char* argv[])
             NetDeviceContainer transmitDevices;
             transmitDevices.Add(ueNetDevices.Get(0));
             tft = Create<LteSlTft>(LteSlTft::Direction::TRANSMIT, groupAddress4, slInfo);
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, transmitDevices, tft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, transmitDevices, tft);
             NetDeviceContainer receiveDevices;
             receiveDevices.Add(ueNetDevices.Get(1));
             receiveDevices.Add(ueNetDevices.Get(2));
             tft = Create<LteSlTft>(LteSlTft::Direction::RECEIVE, groupAddress4, slInfo);
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receiveDevices, tft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receiveDevices, tft);
         }
         else
         {
@@ -656,7 +650,7 @@ main(int argc, char* argv[])
             tft = Create<LteSlTft>(LteSlTft::Direction::BIDIRECTIONAL,
                                    ueIpIface.GetAddress(1, 0),
                                    slInfo);
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, ueNetDevices, tft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, ueNetDevices, tft);
         }
     }
     else
@@ -681,12 +675,12 @@ main(int argc, char* argv[])
             NetDeviceContainer transmitDevices;
             transmitDevices.Add(ueNetDevices.Get(0));
             tft = Create<LteSlTft>(LteSlTft::Direction::TRANSMIT, groupAddress6, slInfo);
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, transmitDevices, tft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, transmitDevices, tft);
             NetDeviceContainer receiveDevices;
             receiveDevices.Add(ueNetDevices.Get(1));
             receiveDevices.Add(ueNetDevices.Get(2));
             tft = Create<LteSlTft>(LteSlTft::Direction::RECEIVE, groupAddress6, slInfo);
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receiveDevices, tft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receiveDevices, tft);
         }
         else
         {
@@ -694,7 +688,7 @@ main(int argc, char* argv[])
             tft = Create<LteSlTft>(LteSlTft::Direction::BIDIRECTIONAL,
                                    ueIpIface.GetAddress(1, 0),
                                    slInfo);
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, ueNetDevices, tft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, ueNetDevices, tft);
         }
     }
 

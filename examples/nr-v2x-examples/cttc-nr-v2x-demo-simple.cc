@@ -365,10 +365,10 @@ main(int argc, char* argv[])
      */
 
     /*
-     * Setup the NR module. We create the NrHelper, which takes care of
-     * creating and connecting the various part of the NR stack
+     * Setup the NR module. We create the NrSlHelper, which takes care of
+     * creating and connecting the various part of the NR sidelink stack
      */
-    Ptr<NrHelper> nrHelper = CreateObject<NrHelper>();
+    auto nrHelper = CreateObject<NrSlHelper>();
 
     /*
      * Spectrum division. We create one operational band, containing
@@ -448,12 +448,9 @@ main(int argc, char* argv[])
                                     PointerValue(CreateObject<IsotropicAntennaModel>()));
 
     // NR Sidelink UE PHY
-    nrHelper->SetUePhyTypeId(NrSlUePhy::GetTypeId());
     nrHelper->SetUePhyAttribute("TxPower", DoubleValue(txPower));
-    nrHelper->SetUeSpectrumTypeId(NrSlSpectrumPhy::GetTypeId());
 
     // NR Sidelink attribute of UE MAC, which are would be common for all the UEs
-    nrHelper->SetUeMacTypeId(NrSlUeMac::GetTypeId());
     nrHelper->SetUeMacAttribute("EnableSensing", BooleanValue(false));
     nrHelper->SetUeMacAttribute("T1", UintegerValue(2));
     nrHelper->SetUeMacAttribute("T2", UintegerValue(33));
@@ -503,30 +500,22 @@ main(int argc, char* argv[])
     }
 
     /*
-     * Configure Sidelink. We create the following helpers needed for the
-     * NR Sidelink, i.e., V2X simulation:
-     * - NrSlHelper, which will configure the UEs protocol stack to be ready to
-     *   perform Sidelink related procedures.
-     */
-    Ptr<NrSlHelper> nrSlHelper = CreateObject<NrSlHelper>();
-
-    /*
      * Set the SL error model and AMC
      * Error model type: ns3::NrEesmCcT1, ns3::NrEesmCcT2, ns3::NrEesmIrT1,
      *                   ns3::NrEesmIrT2, ns3::NrLteMiErrorModel
      * AMC type: NrAmc::ShannonModel or NrAmc::ErrorModel
      */
     std::string errorModel = "ns3::NrEesmIrT1";
-    nrSlHelper->SetSlErrorModel(errorModel);
-    nrSlHelper->SetUeSlAmcAttribute("AmcModel", EnumValue(NrAmc::ErrorModel));
+    nrHelper->SetSlErrorModel(errorModel);
+    nrHelper->SetUeSlAmcAttribute("AmcModel", EnumValue(NrAmc::ErrorModel));
 
     /*
      * Set the SL scheduler attributes
      * In this example we use NrSlUeMacSchedulerFixedMcs scheduler, which uses
      * a fixed MCS value
      */
-    nrSlHelper->SetNrSlSchedulerTypeId(NrSlUeMacSchedulerFixedMcs::GetTypeId());
-    nrSlHelper->SetUeSlSchedulerAttribute("Mcs", UintegerValue(14));
+    nrHelper->SetNrSlSchedulerTypeId(NrSlUeMacSchedulerFixedMcs::GetTypeId());
+    nrHelper->SetUeSlSchedulerAttribute("Mcs", UintegerValue(14));
 
     /*
      * Very important method to configure UE protocol stack, i.e., it would
@@ -534,7 +523,7 @@ main(int argc, char* argv[])
      * error model, configure AMC, and configure ChunkProcessor in Interference
      * API.
      */
-    nrSlHelper->PrepareUeForSidelink(ueVoiceNetDev, bwpIdContainer);
+    nrHelper->PrepareUeForSidelink(ueVoiceNetDev, bwpIdContainer);
 
     /*
      * Start preparing for all the sub Structs/RRC Information Element (IEs)
@@ -642,16 +631,17 @@ main(int argc, char* argv[])
     slPreConfigNr.slPreconfigFreqInfoList[0] = slFreConfigCommonNr;
 
     // Communicate the above pre-configuration to the NrSlHelper
-    nrSlHelper->InstallNrSlPreConfiguration(ueVoiceNetDev, slPreConfigNr);
+    nrHelper->InstallNrSlPreConfiguration(ueVoiceNetDev, slPreConfigNr);
 
     /****************************** End SL Configuration ***********************/
 
     /*
      * Fix the random streams
      */
-    int64_t stream = 1;
-    stream += nrHelper->AssignStreams(ueVoiceNetDev, stream);
-    stream += nrSlHelper->AssignStreams(ueVoiceNetDev, stream);
+    int64_t streamBase{1000};
+    int64_t streamsUsed{0};
+    streamsUsed = nrHelper->AssignStreams(ueVoiceNetDev, streamBase);
+    NS_LOG_DEBUG("Used " << streamsUsed << " random variable streams in NrHelper");
 
     /*
      * Configure the IP stack, and activate NR Sidelink bearer (s) as per the
@@ -662,7 +652,9 @@ main(int argc, char* argv[])
 
     InternetStackHelper internet;
     internet.Install(ueVoiceContainer);
-    stream += internet.AssignStreams(ueVoiceContainer, stream);
+    streamBase = 2000;
+    streamsUsed = internet.AssignStreams(ueVoiceContainer, streamBase);
+    NS_LOG_DEBUG("Used " << streamsUsed << " random variable streams in InternetStackHelper");
     uint32_t dstL2Id = 255;
     Ipv4Address groupAddress4("225.0.0.0"); // use multicast address as destination
     Ipv6Address groupAddress6("ff0e::1");   // use multicast address as destination
@@ -696,7 +688,7 @@ main(int argc, char* argv[])
         localAddress = InetSocketAddress(Ipv4Address::GetAny(), port);
         tft = Create<LteSlTft>(LteSlTft::Direction::BIDIRECTIONAL, groupAddress4, slInfo);
         // Set Sidelink bearers
-        nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, ueVoiceNetDev, tft);
+        nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, ueVoiceNetDev, tft);
     }
     else
     {
@@ -716,7 +708,7 @@ main(int argc, char* argv[])
         localAddress = Inet6SocketAddress(Ipv6Address::GetAny(), port);
         tft = Create<LteSlTft>(LteSlTft::Direction::BIDIRECTIONAL, groupAddress6, slInfo);
         // Set Sidelink bearers
-        nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, ueVoiceNetDev, tft);
+        nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, ueVoiceNetDev, tft);
     }
 
     /*

@@ -7,6 +7,8 @@
 #ifndef NR_SL_HELPER_H
 #define NR_SL_HELPER_H
 
+#include "nr-helper.h"
+
 #include <ns3/lte-rrc-sap.h>
 #include <ns3/net-device-container.h>
 #include <ns3/object.h>
@@ -19,7 +21,7 @@ class NrAmc;
 class LteSlTft;
 class NrSlUeMacScheduler;
 
-class NrSlHelper : public Object
+class NrSlHelper : public NrHelper
 {
   public:
     /**
@@ -138,7 +140,7 @@ class NrSlHelper : public Object
      * \param stream first stream index to use
      * \return the number of stream indices (possibly zero) that have been assigned
      */
-    int64_t AssignStreams(NetDeviceContainer c, int64_t stream);
+    int64_t AssignStreams(NetDeviceContainer c, int64_t stream) override;
 
   protected:
     /**

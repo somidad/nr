@@ -651,10 +651,10 @@ main(int argc, char* argv[])
                                                speed);
 
     /*
-     * Setup the NR module. We create the NrHelper, which takes care of
-     * creating and connecting the various part of the NR stack
+     * Setup the NR module. We create the NrSlHelper, which takes care of
+     * creating and connecting the various part of the NR sidelink stack
      */
-    Ptr<NrHelper> nrHelper = CreateObject<NrHelper>();
+    auto nrHelper = CreateObject<NrSlHelper>();
 
     /*
      * Spectrum division. We create one operational band, containing
@@ -724,11 +724,8 @@ main(int argc, char* argv[])
     nrHelper->SetUeAntennaAttribute("AntennaElement",
                                     PointerValue(CreateObject<IsotropicAntennaModel>()));
 
-    nrHelper->SetUePhyTypeId(NrSlUePhy::GetTypeId());
     nrHelper->SetUePhyAttribute("TxPower", DoubleValue(txPower));
-    nrHelper->SetUeSpectrumTypeId(NrSlSpectrumPhy::GetTypeId());
 
-    nrHelper->SetUeMacTypeId(NrSlUeMac::GetTypeId());
     nrHelper->SetUeMacAttribute("EnableSensing", BooleanValue(enableSensing));
     nrHelper->SetUeMacAttribute("T1", UintegerValue(static_cast<uint8_t>(t1)));
     nrHelper->SetUeMacAttribute("T2", UintegerValue(t2));
@@ -763,30 +760,22 @@ main(int argc, char* argv[])
     }
 
     /*
-     * Configure Sidelink. We create the following helpers needed for the
-     * NR Sidelink, i.e., V2X simulation:
-     * - NrSlHelper, which will configure the UEs protocol stack to be ready to
-     *   perform Sidelink related procedures.
-     */
-    Ptr<NrSlHelper> nrSlHelper = CreateObject<NrSlHelper>();
-
-    /*
      * Set the SL error model and AMC
      * Error model type: ns3::NrEesmCcT1, ns3::NrEesmCcT2, ns3::NrEesmIrT1,
      *                   ns3::NrEesmIrT2, ns3::NrLteMiErrorModel
      * AMC type: NrAmc::ShannonModel or NrAmc::ErrorModel
      */
     std::string errorModel = "ns3::NrEesmIrT1";
-    nrSlHelper->SetSlErrorModel(errorModel);
-    nrSlHelper->SetUeSlAmcAttribute("AmcModel", EnumValue(NrAmc::ErrorModel));
+    nrHelper->SetSlErrorModel(errorModel);
+    nrHelper->SetUeSlAmcAttribute("AmcModel", EnumValue(NrAmc::ErrorModel));
 
     /*
      * Set the SL scheduler attributes
      * In this example we use NrSlUeMacSchedulerSimple scheduler, which uses
      * a fixed MCS value
      */
-    nrSlHelper->SetNrSlSchedulerTypeId(NrSlUeMacSchedulerFixedMcs::GetTypeId());
-    nrSlHelper->SetUeSlSchedulerAttribute("Mcs", UintegerValue(mcs));
+    nrHelper->SetNrSlSchedulerTypeId(NrSlUeMacSchedulerFixedMcs::GetTypeId());
+    nrHelper->SetUeSlSchedulerAttribute("Mcs", UintegerValue(mcs));
 
     /*
      * Very important method to configure UE protocol stack, i.e., it would
@@ -794,7 +783,7 @@ main(int argc, char* argv[])
      * error model, configure AMC, and configure ChunkProcessor in Interference
      * API.
      */
-    nrSlHelper->PrepareUeForSidelink(allSlUesNetDeviceContainer, bwpIdContainer);
+    nrHelper->PrepareUeForSidelink(allSlUesNetDeviceContainer, bwpIdContainer);
 
     /*
      * Start preparing for all the sub Structs/RRC Information Element (IEs)
@@ -906,16 +895,17 @@ main(int argc, char* argv[])
     slPreConfigNr.slPreconfigFreqInfoList[0] = slFreConfigCommonNr;
 
     // Communicate the above pre-configuration to the NrSlHelper
-    nrSlHelper->InstallNrSlPreConfiguration(allSlUesNetDeviceContainer, slPreConfigNr);
+    nrHelper->InstallNrSlPreConfiguration(allSlUesNetDeviceContainer, slPreConfigNr);
 
     /****************************** End SL Configuration ***********************/
 
     /*
      * Fix the random streams
      */
-    int64_t stream = 1;
-    stream += nrHelper->AssignStreams(allSlUesNetDeviceContainer, stream);
-    stream += nrSlHelper->AssignStreams(allSlUesNetDeviceContainer, stream);
+    int64_t streamBase{1000};
+    int64_t streamsUsed{0};
+    streamsUsed = nrHelper->AssignStreams(allSlUesNetDeviceContainer, streamBase);
+    NS_LOG_DEBUG("Used " << streamsUsed << " random variable streams in NrHelper");
 
     /*
      * if enableOneTxPerLane is true:
@@ -981,7 +971,9 @@ main(int argc, char* argv[])
 
     InternetStackHelper internet;
     internet.Install(allSlUesContainer);
-    stream += internet.AssignStreams(allSlUesContainer, stream);
+    streamBase = 2000;
+    streamsUsed = internet.AssignStreams(allSlUesContainer, streamBase);
+    NS_LOG_DEBUG("Used " << streamsUsed << " random variable streams in InternetStackHelper");
     uint32_t dstL2Id = 255;
     Ipv4Address groupAddress4("225.0.0.0"); // use multicast address as destination
     Ipv6Address groupAddress6("ff0e::1");   // use multicast address as destination
@@ -1014,11 +1006,11 @@ main(int argc, char* argv[])
 
         tft = Create<LteSlTft>(LteSlTft::Direction::TRANSMIT, groupAddress4, slInfo);
         // Set Sidelink bearers
-        nrSlHelper->ActivateNrSlBearer(slBearersActivationTime, txSlUesNetDevice, tft);
+        nrHelper->ActivateNrSlBearer(slBearersActivationTime, txSlUesNetDevice, tft);
 
         tft = Create<LteSlTft>(LteSlTft::Direction::RECEIVE, groupAddress4, slInfo);
         // Set Sidelink bearers
-        nrSlHelper->ActivateNrSlBearer(slBearersActivationTime, rxSlUesNetDevice, tft);
+        nrHelper->ActivateNrSlBearer(slBearersActivationTime, rxSlUesNetDevice, tft);
     }
     else
     {
@@ -1039,10 +1031,10 @@ main(int argc, char* argv[])
 
         tft = Create<LteSlTft>(LteSlTft::Direction::TRANSMIT, groupAddress4, slInfo);
         // Set Sidelink bearers for transmitting UEs
-        nrSlHelper->ActivateNrSlBearer(slBearersActivationTime, txSlUesNetDevice, tft);
+        nrHelper->ActivateNrSlBearer(slBearersActivationTime, txSlUesNetDevice, tft);
 
         tft = Create<LteSlTft>(LteSlTft::Direction::RECEIVE, groupAddress4, slInfo);
-        nrSlHelper->ActivateNrSlBearer(slBearersActivationTime, rxSlUesNetDevice, tft);
+        nrHelper->ActivateNrSlBearer(slBearersActivationTime, rxSlUesNetDevice, tft);
     }
 
     /*
@@ -1053,7 +1045,8 @@ main(int argc, char* argv[])
     // Random variable to randomize a bit start times of the client applications
     // to avoid simulation artifacts of all the TX UEs transmitting at the same time.
     Ptr<UniformRandomVariable> startTimeSeconds = CreateObject<UniformRandomVariable>();
-    startTimeSeconds->SetStream(stream);
+    streamBase = 3000;
+    startTimeSeconds->SetStream(streamBase);
     startTimeSeconds->SetAttribute("Min", DoubleValue(0));
     startTimeSeconds->SetAttribute("Max", DoubleValue(0.10));
 

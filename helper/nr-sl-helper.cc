@@ -43,6 +43,12 @@ NrSlHelper::NrSlHelper()
 
 {
     NS_LOG_FUNCTION(this);
+    // Override default configuration of NrHelper factories
+    SetUePhyTypeId(NrSlUePhy::GetTypeId());
+    SetUeSpectrumTypeId(NrSlSpectrumPhy::GetTypeId());
+    SetUeMacTypeId(NrSlUeMac::GetTypeId());
+    SetBwpManagerTypeId(NrSlBwpManagerUe::GetTypeId());
+    // Some SL specific factories
     m_ueSlAmcFactory.SetTypeId(NrAmc::GetTypeId());
     m_ueSlSchedulerFactory.SetTypeId(NrSlUeMacSchedulerFixedMcs::GetTypeId());
 }
@@ -56,7 +62,7 @@ TypeId
 NrSlHelper::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::NrSlHelper")
-                            .SetParent<Object>()
+                            .SetParent<NrHelper>()
                             .SetGroupName("nr")
                             .AddConstructor<NrSlHelper>();
     return tid;
@@ -66,7 +72,7 @@ void
 NrSlHelper::DoDispose()
 {
     NS_LOG_FUNCTION(this);
-    Object::DoDispose();
+    NrHelper::DoDispose();
 }
 
 void
@@ -380,7 +386,7 @@ NrSlHelper::AssignStreams(NetDeviceContainer c, int64_t stream)
             }
         }
     }
-
+    currentStream += NrHelper::AssignStreams(c, currentStream);
     return (currentStream - stream);
 }
 
