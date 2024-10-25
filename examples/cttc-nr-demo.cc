@@ -260,93 +260,73 @@ main(int argc, char* argv[])
     nrHelper->SetEpcHelper(nrEpcHelper);
 
     /*
-     * Spectrum division. We create two operational bands, each of them containing
-     * one component carrier, and each CC containing a single bandwidth part
-     * centered at the frequency specified by the input parameters.
-     * Each spectrum part length is, as well, specified by the input parameters.
-     * Both operational bands will use the StreetCanyon channel modeling.
+     * BandwidthPart configuration.  The BandwidthPart (BWP) is a fundamental
+     * component of the NR spectrum management hierarchy.  A BandwidthPart
+     * in ns-3 consists of a center frequency, a bandwidth, an OFDM numerology, 
+     * and an index.  In this scenario, we configure two adjacent BWP;
+     * in frequency (lower to higher):
+     * ------------BWP0---------------|--------------BWP1------------------
      */
-    BandwidthPartInfoPtrVector allBwps;
-    CcBwpCreator ccBwpCreator;
-    const uint8_t numCcPerBand = 1; // in this example, both bands have a single CC
-
-    // Create the configuration for the CcBwpHelper. SimpleOperationBandConf creates
-    // a single BWP per CC
-    CcBwpCreator::SimpleOperationBandConf bandConf1(centralFrequencyBand1,
-                                                    bandwidthBand1,
-                                                    numCcPerBand,
-                                                    BandwidthPartInfo::UMi_StreetCanyon);
-    CcBwpCreator::SimpleOperationBandConf bandConf2(centralFrequencyBand2,
-                                                    bandwidthBand2,
-                                                    numCcPerBand,
-                                                    BandwidthPartInfo::UMi_StreetCanyon);
-
-    // By using the configuration created, it is time to make the operation bands
-    OperationBandInfo band1 = ccBwpCreator.CreateOperationBandContiguousCc(bandConf1);
-    OperationBandInfo band2 = ccBwpCreator.CreateOperationBandContiguousCc(bandConf2);
+    uint16_t numerology = 0;
+    auto bwp0 = BandwidthPartHelper::CreateBwp(0, numerology, centralFrequency0, bandwidth1);
+    auto bwp1 = BandwidthPartHelper::CreateBwp(1, numerology, centralFrequency1, bandwidth2);
+    // BWP could also have methods to return the number of resource blocks,
+    // the RB width (180 KHz * numerology factor), etc., the number of
+    // subchannels (for NR sidelink), etc., to help users
 
     /*
-     * The configured spectrum division is:
-     * ------------Band1--------------|--------------Band2-----------------
-     * ------------CC1----------------|--------------CC2-------------------
-     * ------------BWP1---------------|--------------BWP2------------------
+     * Next we configure the 3GPP propagation scenario, channel, and propagation
+     * models, using a ScenarioHelper.
      */
+    ScenarioHelper scenarioHelper;
+    scenarioHelper.SetScenario(ScenarioHelper::UMi_StreetCanyon);
+    // set any other attributes on the channels here, if needed
 
     /*
-     * Attributes of ThreeGppChannelModel still cannot be set in our way.
-     * TODO: Coordinate with Tommaso
+     * Note:  ScenarioHelper is intended to be optional; a user could instead
+     * create a basic channel manually in the usual way:
+     *
+     * auto channel = CreateObject<SingleModelSpectrumChannel> ();
+     * auto lossModel = CreateObject<LogDistancePropagationLossModel> ();
+     * channel->AddPropagationLossModel(lossModel);
+     *
+     * However, the NrPhy probably needs to know what kind of fading channel
+     * is configured (or if none is configured) so that the right EESM
+     * parameter is used (or else bypassed).  Not sure if ScenarioHelper would
+     * be useful to pass this information-- if so, we could just configure
+     * "AWGN" scenario type.
      */
-    Config::SetDefault("ns3::ThreeGppChannelModel::UpdatePeriod", TimeValue(MilliSeconds(0)));
-    nrHelper->SetChannelConditionModelAttribute("UpdatePeriod", TimeValue(MilliSeconds(0)));
-    nrHelper->SetPathlossAttribute("ShadowingEnabled", BooleanValue(false));
+     bwp0->SetChannel(scenarioHelper.GetChannel());
+     bwp1->SetChannel(scenarioHelper.GetChannel());
 
     /*
-     * Initialize channel and pathloss, plus other things inside band1. If needed,
-     * the band configuration can be done manually, but we leave it for more
-     * sophisticated examples. For the moment, this method will take care
-     * of all the spectrum initialization needs.
+     * Instead of the CcBwpCreator return type BandwidthPartInfoPtrVector,
+     * just make allBwps into a std::vector<Ptr<BandwidthPart>>
      */
-    nrHelper->InitializeOperationBand(&band1);
+    std::vector<Ptr<BandwithPart> > allBwps;
+    allBwps.push_back(bwp0);
 
     /*
      * Start to account for the bandwidth used by the example, as well as
      * the total power that has to be divided among the BWPs.
      */
     double x = pow(10, totalTxPower / 10);
-    double totalBandwidth = bandwidthBand1;
+    double totalBandwidth = bandwidth0;
 
     /*
      * if not single band simulation, initialize and setup power in the second band
      */
     if (doubleOperationalBand)
     {
-        // Initialize channel and pathloss, plus other things inside band2
-        nrHelper->InitializeOperationBand(&band2);
-        totalBandwidth += bandwidthBand2;
-        allBwps = CcBwpCreator::GetAllBwps({band1, band2});
-    }
-    else
-    {
-        allBwps = CcBwpCreator::GetAllBwps({band1});
+        allBwps.push_back(bwp1);
+        totalBandwidth += bandwidth1;
     }
 
     /*
-     * allBwps contains all the spectrum configuration needed for the nrHelper.
-     *
-     * Now, we can setup the attributes. We can have three kind of attributes:
-     * (i) parameters that are valid for all the bandwidth parts and applies to
-     * all nodes, (ii) parameters that are valid for all the bandwidth parts
-     * and applies to some node only, and (iii) parameters that are different for
-     * every bandwidth parts. The approach is:
-     *
-     * - for (i): Configure the attribute through the helper, and then install;
-     * - for (ii): Configure the attribute through the helper, and then install
-     * for the first set of nodes. Then, change the attribute through the helper,
-     * and install again;
-     * - for (iii): Install, and then configure the attributes by retrieving
-     * the pointer needed, and calling "SetAttribute" on top of such pointer.
-     *
+     * Pass the BWP pointers to the NrHelper.  Support also the API to
+     * simply add a single Ptr<BandwithPart>, via NrHelper::AddBwp().
      */
+    nrHelper->AddBwps(allBwps);
 
     Packet::EnableChecking();
     Packet::EnablePrinting();
