@@ -94,6 +94,7 @@ class NrSlUeMac : public NrUeMac
      */
     struct NrSlTransmissionParams
     {
+        NrSlTransmissionParams() = default;
         NrSlTransmissionParams(uint8_t prio,
                                Time pdb,
                                uint16_t lSubch,
@@ -104,6 +105,16 @@ class NrSlUeMac : public NrUeMac
         uint16_t m_lSubch{0};                 //!< L_subCH; number of subchannels to be used
         Time m_pRsvpTx{0};                    //!< resource reservation interval
         uint16_t m_cResel{0};                 //!< C_resel counter
+    };
+
+    /**
+     * \brief Structure to pass parameters determined as part of the selection
+     * of candidate resources as per TR 38.214 Section 8.1.4
+     */
+    struct NrSlSelectionParams
+    {
+        uint8_t m_t1;  //!< T1
+        uint16_t m_t2; //!< T2
     };
 
     /**
@@ -395,13 +406,18 @@ class NrSlUeMac : public NrUeMac
      * This function next performs steps 5-7 to possibly reduce the
      * candidate set to the list defined as S_A in the standard.
      *
+     * The values of T1 and T2 that were used in the algorithm are exported
+     * as an output NrSlSelectionParams parameter.
+     *
      * \param sfn The current system frame, subframe, and slot number.
      * \param params The input transmission parameters for the algorithm
+     * \param selectionParams The output selection parameters from the algorithm
      * \return The list of the transmit opportunities (slots) as per the TDD pattern
      *         and the NR SL bitmap
      */
     std::list<SlResourceInfo> GetCandidateResources(const SfnSf& sfn,
-                                                    const NrSlTransmissionParams& params);
+                                                    const NrSlTransmissionParams& params,
+                                                    NrSlSelectionParams& selectionParams);
 
   protected:
     // Inherited
@@ -665,6 +681,7 @@ class NrSlUeMac : public NrUeMac
      *
      * \param sfn The current system frame, subframe, and slot number.
      * \param params The input transmission parameters for the algorithm
+     * \param selectionParams The output selection parameters from the algorithm
      * \param txPool the transmit bandwidth pool
      * \param slotPeriod the slot period
      * \param imsi the IMSI
@@ -678,6 +695,7 @@ class NrSlUeMac : public NrUeMac
     std::list<SlResourceInfo> GetCandidateResourcesPrivate(
         const SfnSf& sfn,
         const NrSlTransmissionParams& params,
+        NrSlSelectionParams& selectionParams,
         Ptr<const NrSlCommResourcePool> txPool,
         Time slotPeriod,
         uint64_t imsi,
