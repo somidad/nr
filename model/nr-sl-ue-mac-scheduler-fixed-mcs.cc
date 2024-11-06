@@ -60,7 +60,11 @@ NrSlUeMacSchedulerFixedMcs::GetTypeId(void)
                           BooleanValue(false),
                           MakeBooleanAccessor(
                               &NrSlUeMacSchedulerFixedMcs::m_allowMultipleDestinationsPerSlot),
-                          MakeBooleanChecker());
+                          MakeBooleanChecker())
+            .AddTraceSource("SchedulingReport",
+                            "Report on the execution of the scheduler",
+                            MakeTraceSourceAccessor(&NrSlUeMacSchedulerFixedMcs::m_schedulingTrace),
+                            "ns3::NrSlUeMacSchedulerFixedMcs::SchedulingReportCallback");
     return tid;
 }
 
@@ -353,43 +357,56 @@ NrSlUeMacSchedulerFixedMcs::DoSchedNrSlTriggerReq(const SfnSf& sfn)
             {
                 if (candResources.size() > 0 && allocationInfo.m_allocatedRlcPdus.size() > 0)
                 {
-                    AttemptGrantAllocation(sfn, dstL2IdtoServe, candResources, allocationInfo);
+                    auto allocationMade =
+                        AttemptGrantAllocation(sfn, dstL2IdtoServe, candResources, allocationInfo);
                     m_reselCounter = 0;
                     m_cResel = 0;
 
-                    // Remove served logical channels from the dstsAndLcsToSched
-                    auto itDstsAndLcsToSched = dstsAndLcsToSched.find(dstL2IdtoServe);
-                    if (allocationInfo.m_allocatedRlcPdus.size() ==
-                        itDstsAndLcsToSched->second.size())
+                    if (allocationMade)
                     {
-                        NS_LOG_DEBUG("All logical channels of destination " << dstL2IdtoServe
-                                                                            << " were allocated");
-                        // All LCs where served, remove destination
-                        dstsAndLcsToSched.erase(dstL2IdtoServe);
-                    }
-                    else
-                    {
-                        NS_LOG_DEBUG("Only " << allocationInfo.m_allocatedRlcPdus.size() << "/"
-                                             << itDstsAndLcsToSched->second.size()
-                                             << " logical channels of destination "
-                                             << dstL2IdtoServe << " were allocated");
-                        // Remove only the LCs that were served
-                        for (auto slRlcPduInfo : allocationInfo.m_allocatedRlcPdus)
+                        // Trace the grant that was just made
+
+                        // Remove served logical channels from the dstsAndLcsToSched
+                        auto itDstsAndLcsToSched = dstsAndLcsToSched.find(dstL2IdtoServe);
+                        if (allocationInfo.m_allocatedRlcPdus.size() ==
+                            itDstsAndLcsToSched->second.size())
                         {
-                            auto itLcs = itDstsAndLcsToSched->second.begin();
-                            while (itLcs != itDstsAndLcsToSched->second.end())
+                            NS_LOG_DEBUG("All logical channels of destination "
+                                         << dstL2IdtoServe << " were allocated");
+                            // All LCs where served, remove destination
+                            dstsAndLcsToSched.erase(dstL2IdtoServe);
+                        }
+                        else
+                        {
+                            NS_LOG_DEBUG("Only " << allocationInfo.m_allocatedRlcPdus.size() << "/"
+                                                 << itDstsAndLcsToSched->second.size()
+                                                 << " logical channels of destination "
+                                                 << dstL2IdtoServe << " were allocated");
+                            // Remove only the LCs that were served
+                            for (auto slRlcPduInfo : allocationInfo.m_allocatedRlcPdus)
                             {
-                                if (*itLcs == slRlcPduInfo.lcid)
+                                auto itLcs = itDstsAndLcsToSched->second.begin();
+                                while (itLcs != itDstsAndLcsToSched->second.end())
                                 {
-                                    NS_LOG_DEBUG("Erasing LCID " << slRlcPduInfo.lcid);
-                                    itLcs = itDstsAndLcsToSched->second.erase(itLcs);
-                                }
-                                else
-                                {
-                                    ++itLcs;
+                                    if (*itLcs == slRlcPduInfo.lcid)
+                                    {
+                                        NS_LOG_DEBUG("Erasing LCID " << slRlcPduInfo.lcid);
+                                        itLcs = itDstsAndLcsToSched->second.erase(itLcs);
+                                    }
+                                    else
+                                    {
+                                        ++itLcs;
+                                    }
                                 }
                             }
                         }
+                    }
+                    else
+                    {
+                        NS_LOG_DEBUG(
+                            "Unable to allocate destination; AttemptGrantAllocation failed to "
+                            << dstL2IdtoServe);
+                        break;
                     }
                 }
                 else
@@ -832,21 +849,23 @@ NrSlUeMacSchedulerFixedMcs::LogicalChannelPrioritization(
                                << " bytes in " << lSubch << " subchannels for a TB size of "
                                << tbSize << " bytes");
 
-        // All LCs in the set should have the same attributes than the lcIdOfRef
-        NrSlUeMac::NrSlTransmissionParams params{lcgMap.begin()->second->GetLcPriority(lcIdOfRef),
-                                                 lcgMap.begin()->second->GetLcPdb(lcIdOfRef),
-                                                 lSubch,
-                                                 lcgMap.begin()->second->GetLcRri(lcIdOfRef),
-                                                 m_cResel};
+        // All LCs in the set should have the same attributes as the lcIdOfRef
+        m_transmissionParams.m_priority = lcgMap.begin()->second->GetLcPriority(lcIdOfRef);
+        m_transmissionParams.m_packetDelayBudget = lcgMap.begin()->second->GetLcPdb(lcIdOfRef);
+        m_transmissionParams.m_lSubch = lSubch;
+        m_transmissionParams.m_pRsvpTx = lcgMap.begin()->second->GetLcRri(lcIdOfRef);
+        m_transmissionParams.m_cResel = m_cResel;
         // GetCandidateResources() will return the set S_A defined in
         // sec. 8.1.4 of TS 38.214.  The scheduler is responsible for
         // further filtering out any candidates that overlap with already
         // scheduled grants within the selection window.
-        auto filteredReso = FilterTxOpportunities(sfn,
-                                                  GetMac()->GetCandidateResources(sfn, params),
-                                                  lcgMap.begin()->second->GetLcRri(lcIdOfRef),
-                                                  m_cResel);
-        if (filteredReso.size() == 0)
+        m_candidateResources =
+            GetMac()->GetCandidateResources(sfn, m_transmissionParams, m_selectionParams);
+        candResources = FilterTxOpportunities(sfn,
+                                              m_candidateResources,
+                                              lcgMap.begin()->second->GetLcRri(lcIdOfRef),
+                                              m_cResel);
+        if (!candResources.size())
         {
             NS_LOG_DEBUG("Resources not found");
             break;
@@ -855,11 +874,10 @@ NrSlUeMacSchedulerFixedMcs::LogicalChannelPrioritization(
         {
             NS_LOG_DEBUG("Resources found");
             candResoTbSize = tbSize;
-            candResources = filteredReso;
         }
         rItSelectedLcs = std::reverse_iterator(selectedLcs.erase(--rItSelectedLcs.base()));
     }
-    if (candResources.size() == 0)
+    if (!candResources.size())
     {
         NS_LOG_DEBUG("Unable to find resources");
         return 0;
@@ -943,7 +961,7 @@ NrSlUeMacSchedulerFixedMcs::GetDstsAndLcsNeedingScheduling(
     }
 }
 
-void
+bool
 NrSlUeMacSchedulerFixedMcs::AttemptGrantAllocation(const SfnSf& sfn,
                                                    uint32_t dstL2Id,
                                                    const std::list<SlResourceInfo>& candResources,
@@ -958,7 +976,7 @@ NrSlUeMacSchedulerFixedMcs::AttemptGrantAllocation(const SfnSf& sfn,
 
     if (!allocated)
     {
-        return;
+        return false;
     }
 
     if (allocationInfo.m_isDynamic)
@@ -969,6 +987,7 @@ NrSlUeMacSchedulerFixedMcs::AttemptGrantAllocation(const SfnSf& sfn,
     {
         CreateSpsGrant(sfn, allocList, allocationInfo);
     }
+    return true;
 }
 
 Time
@@ -1016,6 +1035,19 @@ NrSlUeMacSchedulerFixedMcs::CreateSpsGrant(const SfnSf& sfn,
         std::vector<GrantInfo> grantVector;
         grantVector.push_back(grant);
         NotifyGrantCreated(grant);
+        // Call a more detailed scheduling trace report before adding grant
+        struct SchedulingReport report;
+        report.m_sfn = sfn;
+        report.m_subchannels = GetMac()->GetTotalSubCh();
+        report.m_psfchPeriod = GetMac()->GetPsfchPeriod();
+        report.m_t1 = m_selectionParams.m_t1;
+        report.m_t2 = m_selectionParams.m_t2;
+        m_schedulingTrace(report,
+                          m_candidateResources,
+                          m_transmissionParams,
+                          m_publishedGrants,
+                          m_grantInfo,
+                          grant);
         itVecGrantInfo =
             m_grantInfo.emplace(std::make_pair(slotAllocList.begin()->dstL2Id, grantVector)).first;
         NS_LOG_INFO("New SPS grant created to new destination "
@@ -1100,8 +1132,21 @@ NrSlUeMacSchedulerFixedMcs::CreateSpsGrant(const SfnSf& sfn,
             // only to whether HARQ feedback is enabled
             grant.harqEnabled = allocationInfo.m_harqEnabled && GetMac()->GetPsfchPeriod();
             grant.castType = allocationInfo.m_castType;
-            itVecGrantInfo->second.push_back(grant);
             NotifyGrantCreated(grant);
+            // Call a more detailed scheduling trace report before adding grant
+            struct SchedulingReport report;
+            report.m_sfn = sfn;
+            report.m_subchannels = GetMac()->GetTotalSubCh();
+            report.m_psfchPeriod = GetMac()->GetPsfchPeriod();
+            report.m_t1 = m_selectionParams.m_t1;
+            report.m_t2 = m_selectionParams.m_t2;
+            m_schedulingTrace(report,
+                              m_candidateResources,
+                              m_transmissionParams,
+                              m_publishedGrants,
+                              m_grantInfo,
+                              grant);
+            itVecGrantInfo->second.push_back(grant);
             NS_LOG_INFO("New SPS grant created to existing destination "
                         << slotAllocList.begin()->dstL2Id << " with HARQ ID " << +grant.harqId
                         << " HARQ enabled " << +grant.harqEnabled);
@@ -1177,6 +1222,19 @@ NrSlUeMacSchedulerFixedMcs::CreateSinglePduGrant(const SfnSf& sfn,
         grant.harqEnabled = allocationInfo.m_harqEnabled && GetMac()->GetPsfchPeriod();
         grant.castType = allocationInfo.m_castType;
         NotifyGrantCreated(grant);
+        // Call a more detailed scheduling trace report before adding grant
+        struct SchedulingReport report;
+        report.m_sfn = sfn;
+        report.m_subchannels = GetMac()->GetTotalSubCh();
+        report.m_psfchPeriod = GetMac()->GetPsfchPeriod();
+        report.m_t1 = m_selectionParams.m_t1;
+        report.m_t2 = m_selectionParams.m_t2;
+        m_schedulingTrace(report,
+                          m_candidateResources,
+                          m_transmissionParams,
+                          m_publishedGrants,
+                          m_grantInfo,
+                          grant);
         std::vector<GrantInfo> grantVector;
         grantVector.push_back(grant);
         itGrantInfo =
@@ -1244,6 +1302,19 @@ NrSlUeMacSchedulerFixedMcs::CreateSinglePduGrant(const SfnSf& sfn,
             grant.harqEnabled = allocationInfo.m_harqEnabled && GetMac()->GetPsfchPeriod();
             grant.castType = allocationInfo.m_castType;
             NotifyGrantCreated(grant);
+            // Call a more detailed scheduling trace report before adding grant
+            struct SchedulingReport report;
+            report.m_sfn = sfn;
+            report.m_subchannels = GetMac()->GetTotalSubCh();
+            report.m_psfchPeriod = GetMac()->GetPsfchPeriod();
+            report.m_t1 = m_selectionParams.m_t1;
+            report.m_t2 = m_selectionParams.m_t2;
+            m_schedulingTrace(report,
+                              m_candidateResources,
+                              m_transmissionParams,
+                              m_publishedGrants,
+                              m_grantInfo,
+                              grant);
             itGrantInfo->second.push_back(grant);
             NS_LOG_INFO("New dynamic grant created to existing destination "
                         << slotAllocList.begin()->dstL2Id << " with HARQ ID " << +grant.harqId
@@ -1507,8 +1578,8 @@ NrSlUeMacSchedulerFixedMcs::FilterTxOpportunities(const SfnSf& sfn,
                                         itTxOppr->slSubchannelStart,
                                         itTxOppr->slSubchannelLength))
                 {
-                    NS_LOG_DEBUG("Erasing candidate " << itTxOppr->sfn.Normalize()
-                                                      << " due to published grant overlap");
+                    NS_LOG_INFO("Erasing candidate " << itTxOppr->sfn.Normalize()
+                                                     << " due to published grant overlap");
                     itTxOppr = txOppr.erase(itTxOppr);
                 }
                 else
@@ -1577,7 +1648,7 @@ NrSlUeMacSchedulerFixedMcs::FilterTxOpportunities(const SfnSf& sfn,
                     }
                     if (foundOverlap)
                     {
-                        NS_LOG_DEBUG("Erasing candidate " << itTxOppr->sfn.Normalize());
+                        NS_LOG_INFO("Erasing candidate " << itTxOppr->sfn.Normalize());
                         filtered = true;
                     }
                 }
@@ -1591,6 +1662,7 @@ NrSlUeMacSchedulerFixedMcs::FilterTxOpportunities(const SfnSf& sfn,
         // 3) if whole slot exclusion option is enabled, and candidate is marked with slotBusy
         if (m_wholeSlotExclusion && itTxOppr->GetSlotBusy())
         {
+            NS_LOG_INFO("Erasing slotBusy candidate " << itTxOppr->sfn.Normalize());
             itTxOppr = txOppr.erase(itTxOppr);
             continue;
         }

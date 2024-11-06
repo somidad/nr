@@ -47,6 +47,7 @@ set(source_files
     helper/nr-mac-scheduling-stats.cc
     helper/nr-sl-helper.cc
     helper/nr-sl-stats-helper.cc
+    helper/nr-sl-trace-helper.cc
     model/nr-net-device.cc
     model/nr-gnb-net-device.cc
     model/nr-ue-net-device.cc
@@ -184,6 +185,7 @@ set(header_files
     helper/nr-mac-scheduling-stats.h
     helper/nr-sl-helper.h
     helper/nr-sl-stats-helper.h
+    helper/nr-sl-trace-helper.h
     model/nr-net-device.h
     model/nr-gnb-net-device.h
     model/nr-ue-net-device.h

@@ -59,6 +59,19 @@ class NrSlUeMacSchedulerFixedMcs : public NrSlUeMacScheduler
      */
     ~NrSlUeMacSchedulerFixedMcs() override;
 
+    /**
+     * Structure to pass trace information about the execution of the
+     * scheduling algorithm.
+     */
+    struct SchedulingReport
+    {
+        SfnSf m_sfn;
+        uint16_t m_subchannels;
+        uint16_t m_psfchPeriod;
+        uint8_t m_t1;
+        uint16_t m_t2;
+    };
+
   private:
     void DoRemoveNrSlLcConfigReq(uint8_t lcid, uint32_t dstL2Id) override;
 
@@ -124,8 +137,9 @@ class NrSlUeMacSchedulerFixedMcs : public NrSlUeMacScheduler
      * \param dstL2Id The destination layer 2 id
      * \param candResources The list of candidate resources
      * \param allocationInfo the allocation information to use
+     * \return true if a grant allocation was made
      */
-    void AttemptGrantAllocation(const SfnSf& sfn,
+    bool AttemptGrantAllocation(const SfnSf& sfn,
                                 uint32_t dstL2Id,
                                 const std::list<SlResourceInfo>& candResources,
                                 const AllocationInfo& allocationInfo);
@@ -522,6 +536,15 @@ class NrSlUeMacSchedulerFixedMcs : public NrSlUeMacScheduler
      */
     void RemoveUnpublishedGrants(uint8_t lcid, uint32_t dstL2Id);
 
+    std::list<SlResourceInfo>
+        m_candidateResources; //!< Saved result of calling GetCandidateResources()
+
+    NrSlUeMac::NrSlTransmissionParams
+        m_transmissionParams; //!< Saved result of parameters used for m_candidateResources
+
+    NrSlUeMac::NrSlSelectionParams
+        m_selectionParams; //!< Saved result of parameters output from selection algorithm
+
     std::unordered_map<uint32_t, std::shared_ptr<NrSlUeMacSchedulerDstInfo>>
         m_dstMap; //!< The map of between destination layer 2 id and the destination info
 
@@ -548,6 +571,14 @@ class NrSlUeMacSchedulerFixedMcs : public NrSlUeMacScheduler
     bool m_allowMultipleDestinationsPerSlot{
         false}; //!< Allow scheduling of multiple destinations in same slot
     mutable Ptr<NrSlUeMacHarq> m_nrSlUeMacHarq{nullptr}; //!< Pointer to cache object
+
+    TracedCallback<const struct SchedulingReport&,
+                   const std::list<SlResourceInfo>&,
+                   const struct NrSlUeMac::NrSlTransmissionParams&,
+                   const std::vector<SlGrantResource>&,
+                   const std::map<uint32_t, std::vector<GrantInfo>>&,
+                   const struct GrantInfo&>
+        m_schedulingTrace; //!< Trace source for scheduling report
 };
 
 } // namespace ns3

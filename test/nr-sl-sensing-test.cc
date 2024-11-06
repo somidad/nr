@@ -313,8 +313,10 @@ NrSlSensingTestCase::DoRun()
     uint16_t cResel = 5;
     NrSlUeMac::NrSlTransmissionParams params{priority, packetDelayBudget, lSubch, pRsvpTx, cResel};
     std::list<SlResourceInfo> availableReso;
+    NrSlUeMac::NrSlSelectionParams selectionParams;
     availableReso = nrSlUeMac->GetCandidateResourcesPrivate(currentSfn,
                                                             params,
+                                                            selectionParams,
                                                             CreateNrSlCommResourcePool(totalSubCh),
                                                             slotPeriod,
                                                             imsi,
@@ -337,6 +339,7 @@ NrSlSensingTestCase::DoRun()
     NrSlUeMac::NrSlTransmissionParams params2{priority, packetDelayBudget, lSubch, pRsvpTx, cResel};
     availableReso = nrSlUeMac->GetCandidateResourcesPrivate(currentSfn,
                                                             params2,
+                                                            selectionParams,
                                                             CreateNrSlCommResourcePool(totalSubCh),
                                                             slotPeriod,
                                                             imsi,
@@ -381,6 +384,7 @@ NrSlSensingTestCase::DoRun()
     NS_LOG_DEBUG("Adding sensing data only to slots 8045 and 8046");
     availableReso = nrSlUeMac->GetCandidateResourcesPrivate(currentSfn,
                                                             params2,
+                                                            selectionParams,
                                                             CreateNrSlCommResourcePool(totalSubCh),
                                                             slotPeriod,
                                                             imsi,
@@ -461,8 +465,10 @@ NrSlSensingTransmitHistoryTest::DoRun()
     uint8_t priority = 0;
     NrSlUeMac::NrSlTransmissionParams params{priority, packetDelayBudget, lSubch, pRsvpTx, cResel};
     std::list<SlResourceInfo> availableReso;
+    NrSlUeMac::NrSlSelectionParams selectionParams;
     availableReso = nrSlUeMac->GetCandidateResourcesPrivate(currentSfn,
                                                             params,
+                                                            selectionParams,
                                                             CreateNrSlCommResourcePool(totalSubCh),
                                                             slotPeriod,
                                                             imsi,

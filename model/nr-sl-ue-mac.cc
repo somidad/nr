@@ -283,10 +283,13 @@ NrSlUeMac::DoSlotIndication(const SfnSf& sfn)
 }
 
 std::list<SlResourceInfo>
-NrSlUeMac::GetCandidateResources(const SfnSf& sfn, const NrSlTransmissionParams& params)
+NrSlUeMac::GetCandidateResources(const SfnSf& sfn,
+                                 const NrSlTransmissionParams& params,
+                                 NrSlSelectionParams& selectionParams)
 {
     return GetCandidateResourcesPrivate(sfn,
                                         params,
+                                        selectionParams,
                                         m_slTxPool,
                                         m_nrSlUePhySapProvider->GetSlotPeriod(),
                                         GetImsi(),
@@ -321,6 +324,7 @@ NrSlUeMac::TimeToSlots(const SfnSf& sfn, Time timeVal) const
 std::list<SlResourceInfo>
 NrSlUeMac::GetCandidateResourcesPrivate(const SfnSf& sfn,
                                         const NrSlTransmissionParams& params,
+                                        NrSlSelectionParams& selectionParams,
                                         Ptr<const NrSlCommResourcePool> txPool,
                                         Time slotPeriod,
                                         uint64_t imsi,
@@ -371,6 +375,8 @@ NrSlUeMac::GetCandidateResourcesPrivate(const SfnSf& sfn,
     }
     NS_ABORT_MSG_UNLESS(CheckT1WithinTproc1(sfn, m_t1),
                         "Configured T1 " << m_t1 << " is greater than Tproc1 for this numerology");
+    selectionParams.m_t1 = m_t1;
+    selectionParams.m_t2 = t2;
     SensingTraceReport report; // for tracing
     report.m_sfn = sfn;
     report.m_t0 = txPool->GetNrSlSensWindInSlots(bwpId, poolId, slotPeriod);

@@ -1666,7 +1666,7 @@ class TestSidelinkHarqSuite : public TestSuite
 {
   public:
     TestSidelinkHarqSuite()
-        : TestSuite("nr-test-sidelink-harq", Type::UNIT)
+        : TestSuite("nr-sl-test-harq", Type::UNIT)
     {
         // Step through basic parameter combinations from sidelink-harq-example.cc
         // No packet losses in this case

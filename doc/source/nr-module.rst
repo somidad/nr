@@ -1854,6 +1854,13 @@ Usage
 This section is principally concerned with the usage of the model, using
 the public API. We discuss on examples available to the user.
 
+.. _Traces:
+
+Traces
+******
+
+.. include:: nr-sl-traces.inc
+
 .. _Examples:
 
 Examples
