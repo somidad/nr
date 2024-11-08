@@ -48,8 +48,6 @@ NrUePhy::NrUePhy()
     m_wbCqiLast = Simulator::Now();
     m_ueCphySapProvider = new MemberLteUeCphySapProvider<NrUePhy>(this);
     m_powerControl = CreateObject<NrUePowerControl>(this);
-    m_nrSlUeCphySapProvider = new MemberNrSlUeCphySapProvider<NrUePhy>(this);
-    DoReset();
 
     Simulator::Schedule(m_ueMeasurementsFilterPeriod, &NrUePhy::ReportUeMeasurements, this);
 }
@@ -57,7 +55,6 @@ NrUePhy::NrUePhy()
 NrUePhy::~NrUePhy()
 {
     NS_LOG_FUNCTION(this);
-    m_slHarqFbList.clear();
 }
 
 void
@@ -75,9 +72,6 @@ NrUePhy::DoDispose()
         m_cam->Dispose();
         m_cam = nullptr;
     }
-    delete m_nrSlUeCphySapProvider;
-    m_slTxPool = nullptr;
-    m_slRxPool = nullptr;
     NrPhy::DoDispose();
 }
 
@@ -137,11 +131,6 @@ NrUePhy::GetTypeId()
                           "Transport block decode latency",
                           TimeValue(MicroSeconds(100)),
                           MakeTimeAccessor(&NrPhy::SetTbDecodeLatency, &NrPhy::GetTbDecodeLatency),
-                          MakeTimeChecker())
-            .AddAttribute("RsrpFilterPeriod",
-                          "L1 Filter period for RSRP",
-                          TimeValue(MilliSeconds(200)),
-                          MakeTimeAccessor(&NrUePhy::m_rsrpFilterPeriod),
                           MakeTimeChecker())
             .AddAttribute("EnableUplinkPowerControl",
                           "If true, Uplink Power Control will be enabled.",
@@ -415,6 +404,30 @@ uint32_t
 NrUePhy::GetNumRbPerRbg() const
 {
     return m_numRbPerRbg;
+}
+
+void
+NrUePhy::SetCurrentSfnSf(const SfnSf& currentSfnSf)
+{
+    m_currentSlot = currentSfnSf;
+}
+
+void
+NrUePhy::SetLastSlotStart(Time startTime)
+{
+    m_lastSlotStart = startTime;
+}
+
+Time
+NrUePhy::GetLastSlotStart() const
+{
+    return m_lastSlotStart;
+}
+
+NrUePhySapUser*
+NrUePhy::GetPhySapUser() const
+{
+    return m_phySapUser;
 }
 
 double
@@ -745,33 +758,9 @@ NrUePhy::StartSlot(const SfnSf& s)
 
     // update the current slot object, and insert DL/UL CTRL allocations depending on the TDD
     // pattern
-    bool nrAllocExists = SlotAllocInfoExists(m_currentSlot);
-    bool slAllocExists = NrSlSlotAllocInfoExists(m_currentSlot);
-
-    /*
-     * Clear SL expected TB not received in previous slot.
-     * It may happen that a UE is expecting to receive a TB in a slot, however,
-     * in the same slot it decided to transmit. In this case, due to the half-duplex
-     * nature of the Sidelink it will not receive that TB. Thus, the information
-     * inserted in the m_slTransportBlocks buffer will be out-dated in the next slot,
-     * hence, must be removed at the beginning of the next slot. This is also due
-     * to the fact that in current implementation we always prioritize transmission
-     * over reception without looking at the priority of the two TBs, i.e, the one
-     * which needs to be transmitted and the one which need to be received.
-     * As per the 3GPP standard, a device might prioritize RX over TX as per
-     * the priority or vice versa.
-     */
-    m_spectrumPhy->ClearExpectedSlTb();
-
-    SendSlExpectedTbInfo(s);
-
-    if (slAllocExists)
-    {
-        NS_ASSERT_MSG(!nrAllocExists, "Can not start SL slot when there is UL allocation");
-        StartNrSlSlot(s);
-        return;
-    }
-
+    bool nrAllocationExists = SlotAllocInfoExists(m_currentSlot);
+    FinishSlotProcessing(s, nrAllocationExists);
+#if 0
     if (nrAllocExists)
     {
         m_currSlotAllocInfo = RetrieveSlotAllocInfo(m_currentSlot);
@@ -783,6 +772,92 @@ NrUePhy::StartSlot(const SfnSf& s)
 
     PushCtrlAllocations(m_currentSlot);
 
+    NS_ASSERT(m_currSlotAllocInfo.m_sfnSf == m_currentSlot);
+
+    NS_LOG_DEBUG("UE " << m_rnti << " start slot " << m_currSlotAllocInfo.m_sfnSf
+                       << " composed by the following allocations, total "
+                       << m_currSlotAllocInfo.m_varTtiAllocInfo.size());
+    for (const auto& alloc : m_currSlotAllocInfo.m_varTtiAllocInfo)
+    {
+        std::string direction;
+        std::string type;
+
+        if (alloc.m_dci->m_format == DciInfoElementTdma::UL)
+        {
+            direction = "UL";
+        }
+        else
+        {
+            direction = "DL";
+        }
+
+        switch (alloc.m_dci->m_type)
+        {
+        case DciInfoElementTdma::VarTtiType::SRS:
+            type = "SRS";
+            NS_LOG_DEBUG("Allocation from sym "
+                         << static_cast<uint32_t>(alloc.m_dci->m_symStart) << " to sym "
+                         << static_cast<uint32_t>(alloc.m_dci->m_numSym + alloc.m_dci->m_symStart)
+                         << " direction " << direction << " type " << type);
+            break;
+        case DciInfoElementTdma::VarTtiType::DATA:
+            type = "DATA";
+            NS_LOG_INFO("Allocation from sym "
+                        << static_cast<uint32_t>(alloc.m_dci->m_symStart) << " to sym "
+                        << static_cast<uint32_t>(alloc.m_dci->m_numSym + alloc.m_dci->m_symStart)
+                        << " direction " << direction << " type " << type);
+            break;
+        case DciInfoElementTdma::VarTtiType::CTRL:
+            type = "CTRL";
+            NS_LOG_DEBUG("Allocation from sym "
+                         << static_cast<uint32_t>(alloc.m_dci->m_symStart) << " to sym "
+                         << static_cast<uint32_t>(alloc.m_dci->m_numSym + alloc.m_dci->m_symStart)
+                         << " direction " << direction << " type " << type);
+            break;
+        default:
+            NS_LOG_ERROR("Unknown type DciInfoElementTdma::VarTtiType " << alloc.m_dci->m_type);
+        }
+    }
+
+    TryToPerformLbt();
+
+    VarTtiAllocInfo allocation = m_currSlotAllocInfo.m_varTtiAllocInfo.front();
+    m_currSlotAllocInfo.m_varTtiAllocInfo.pop_front();
+
+    auto nextVarTtiStart = GetSymbolPeriod() * allocation.m_dci->m_symStart;
+
+    auto ctrlMsgs = PopCurrentSlotCtrlMsgs();
+    if (m_netDevice)
+    {
+        DynamicCast<NrUeNetDevice>(m_netDevice)->RouteOutgoingCtrlMsgs(ctrlMsgs, GetBwpId());
+    }
+    else
+    {
+        // No netDevice (that could happen in tests) so just redirect them to us
+        for (const auto& msg : ctrlMsgs)
+        {
+            EncodeCtrlMsg(msg);
+        }
+    }
+
+    Simulator::Schedule(nextVarTtiStart, &NrUePhy::StartVarTti, this, allocation.m_dci);
+#endif
+}
+
+void
+NrUePhy::FinishSlotProcessing(const SfnSf& s, bool nrAllocationExists)
+{
+    NS_LOG_FUNCTION(this << s);
+    if (nrAllocationExists)
+    {
+        m_currSlotAllocInfo = RetrieveSlotAllocInfo(m_currentSlot);
+    }
+    else
+    {
+        m_currSlotAllocInfo = SlotAllocInfo(m_currentSlot);
+    }
+
+    PushCtrlAllocations(m_currentSlot);
     NS_ASSERT(m_currSlotAllocInfo.m_sfnSf == m_currentSlot);
 
     NS_LOG_DEBUG("UE " << m_rnti << " start slot " << m_currSlotAllocInfo.m_sfnSf
@@ -1219,18 +1294,6 @@ NrUePhy::EnqueueDlHarqFeedback(const DlHarqInfo& m)
 }
 
 void
-NrUePhy::EnqueueSlHarqFeedback(const SlHarqInfo& m)
-{
-    NS_LOG_FUNCTION(this);
-    NS_LOG_DEBUG("Enqueued SL HARQ " << (m.IsReceivedOk() ? "ACK" : "NACK") << " in slot "
-                                     << m_currentSlot.Normalize() << " for process "
-                                     << +m.m_harqProcessId);
-    Ptr<NrSlHarqFeedbackMessage> msg = Create<NrSlHarqFeedbackMessage>();
-    msg->SetSlHarqFeedback(m);
-    m_slHarqFbList.emplace_back(m_currentSlot, msg);
-}
-
-void
 NrUePhy::SetCam(const Ptr<NrChAccessManager>& cam)
 {
     NS_LOG_FUNCTION(this);
@@ -1257,15 +1320,6 @@ void
 NrUePhy::DoReset()
 {
     NS_LOG_FUNCTION(this);
-    // initialize NR SL PSCCH packet queue
-    m_nrSlPscchPacketBurstQueue.clear();
-    Ptr<PacketBurst> pbPscch = CreateObject<PacketBurst>();
-    m_nrSlPscchPacketBurstQueue.push_back(pbPscch);
-
-    // initialize NR SL PSSCH packet queue
-    m_nrSlPsschPacketBurstQueue.clear();
-    // initialize NR SL PSFCH feedback queue
-    m_slHarqFbList.clear();
 }
 
 void
@@ -1706,674 +1760,6 @@ Ptr<NrPmSearch>
 NrUePhy::GetPmSearch() const
 {
     return m_pmSearch;
-}
-
-void
-NrUePhy::PreConfigSlBandwidth(uint16_t slBandwidth)
-{
-    NS_LOG_FUNCTION(this << slBandwidth);
-    if (GetChannelBandwidth() != slBandwidth)
-    {
-        SetChannelBandwidth(slBandwidth);
-    }
-}
-
-void
-NrUePhy::RegisterSlBwpId(uint16_t bwpId)
-{
-    NS_LOG_FUNCTION(this);
-
-    // we initialize queues in DoReset;
-
-    SetBwpId(bwpId);
-}
-
-NrSlUeCphySapProvider*
-NrUePhy::GetNrSlUeCphySapProvider()
-{
-    NS_LOG_FUNCTION(this);
-    return m_nrSlUeCphySapProvider;
-}
-
-void
-NrUePhy::SetNrSlUeCphySapUser(NrSlUeCphySapUser* s)
-{
-    NS_LOG_FUNCTION(this);
-    m_nrSlUeCphySapUser = s;
-}
-
-void
-NrUePhy::SetNrSlUePhySapUser(NrSlUePhySapUser* s)
-{
-    NS_LOG_FUNCTION(this);
-    m_nrSlUePhySapUser = s;
-}
-
-void
-NrUePhy::DoAddNrSlCommTxPool(Ptr<const NrSlCommResourcePool> txPool)
-{
-    NS_LOG_FUNCTION(this);
-    m_slTxPool = txPool;
-}
-
-void
-NrUePhy::DoAddNrSlCommRxPool(Ptr<const NrSlCommResourcePool> rxPool)
-{
-    NS_LOG_FUNCTION(this);
-    m_slRxPool = rxPool;
-}
-
-void
-NrUePhy::StartNrSlSlot(const SfnSf& s)
-{
-    NS_LOG_FUNCTION(this);
-    m_nrSlCurrentAlloc = m_nrSlAllocInfoQueue.front();
-    m_nrSlAllocInfoQueue.pop_front();
-    NS_ASSERT_MSG(m_nrSlCurrentAlloc.sfn == m_currentSlot, "Unable to find NR SL slot allocation");
-    NrSlVarTtiAllocInfo varTtiInfo = *(m_nrSlCurrentAlloc.slvarTtiInfoList.begin());
-    // erase the retrieved var TTI info
-    m_nrSlCurrentAlloc.slvarTtiInfoList.erase(m_nrSlCurrentAlloc.slvarTtiInfoList.begin());
-    auto nextVarTtiStart = GetSymbolPeriod() * varTtiInfo.symStart;
-    Simulator::Schedule(nextVarTtiStart, &NrUePhy::StartNrSlVarTti, this, varTtiInfo);
-}
-
-void
-NrUePhy::StartNrSlVarTti(const NrSlVarTtiAllocInfo& varTtiInfo)
-{
-    NS_LOG_FUNCTION(this);
-
-    Time varTtiDuration;
-
-    if (varTtiInfo.SlVarTtiType == NrSlVarTtiAllocInfo::CTRL)
-    {
-        varTtiDuration = SlCtrl(varTtiInfo);
-        NS_LOG_DEBUG("CTRL " << varTtiDuration.As(Time::MS));
-    }
-    else if (varTtiInfo.SlVarTtiType == NrSlVarTtiAllocInfo::DATA)
-    {
-        varTtiDuration = SlData(varTtiInfo);
-        NS_LOG_DEBUG("DATA " << varTtiDuration.As(Time::MS));
-    }
-    else if (varTtiInfo.SlVarTtiType == NrSlVarTtiAllocInfo::FEEDBACK)
-    {
-        varTtiDuration = SlFeedback(varTtiInfo);
-        NS_LOG_DEBUG("FEEDBACK " << varTtiDuration.As(Time::MS));
-    }
-    else
-    {
-        NS_FATAL_ERROR("Invalid or unknown SL VarTti type " << varTtiInfo.SlVarTtiType);
-    }
-
-    NS_LOG_DEBUG("Scheduling EndNrSlVarTti at time " << (Now() + varTtiDuration).As(Time::S));
-    Simulator::Schedule(varTtiDuration, &NrUePhy::EndNrSlVarTti, this, varTtiInfo);
-}
-
-void
-NrUePhy::EndNrSlVarTti(const NrSlVarTtiAllocInfo& varTtiInfo)
-{
-    NS_LOG_FUNCTION(this);
-    NS_LOG_DEBUG("NR SL var TTI started at symbol " << varTtiInfo.symStart << " which lasted for "
-                                                    << varTtiInfo.symLength << " symbols");
-
-    if (m_nrSlCurrentAlloc.slvarTtiInfoList.empty())
-    {
-        // end of slot
-        m_currentSlot.Add(1);
-        // we need trigger the NR Slot start
-        Simulator::Schedule(m_lastSlotStart + GetSlotPeriod() - Simulator::Now(),
-                            &NrUePhy::StartSlot,
-                            this,
-                            m_currentSlot);
-    }
-    else
-    {
-        NrSlVarTtiAllocInfo nextVarTtiInfo = *(m_nrSlCurrentAlloc.slvarTtiInfoList.begin());
-        // erase the retrieved var TTI info
-        m_nrSlCurrentAlloc.slvarTtiInfoList.erase(m_nrSlCurrentAlloc.slvarTtiInfoList.begin());
-        auto nextVarTtiStart = GetSymbolPeriod() * nextVarTtiInfo.symStart;
-
-        Simulator::Schedule(nextVarTtiStart + m_lastSlotStart - Simulator::Now(),
-                            &NrUePhy::StartNrSlVarTti,
-                            this,
-                            nextVarTtiInfo);
-    }
-}
-
-Time
-NrUePhy::SlCtrl(const NrSlVarTtiAllocInfo& varTtiInfo)
-{
-    NS_LOG_FUNCTION(this);
-
-    Ptr<PacketBurst> pktBurst = PopPscchPacketBurst();
-    if (!pktBurst || pktBurst->GetNPackets() == 0)
-    {
-        NS_FATAL_ERROR("No NR SL CTRL packet to transmit");
-    }
-    Time varTtiPeriod = GetSymbolPeriod() * varTtiInfo.symLength;
-    // -1 ns ensures control ends before data period
-    SendNrSlCtrlChannels(pktBurst, varTtiPeriod - NanoSeconds(1.0), varTtiInfo);
-
-    return varTtiPeriod;
-}
-
-void
-NrUePhy::SendNrSlCtrlChannels(const Ptr<PacketBurst>& pb,
-                              const Time& varTtiDuration,
-                              const NrSlVarTtiAllocInfo& varTtiInfo)
-{
-    NS_LOG_FUNCTION(this);
-
-    std::vector<int> channelRbs;
-    uint32_t lastRbInPlusOne = (varTtiInfo.rbStart + varTtiInfo.rbLength);
-    for (uint32_t i = varTtiInfo.rbStart; i < lastRbInPlusOne; i++)
-    {
-        channelRbs.push_back(static_cast<int>(i));
-    }
-
-    SetSubChannelsForTransmission(channelRbs, varTtiInfo.symLength);
-    NS_LOG_DEBUG("Sending PSCCH on SfnSf " << m_currentSlot);
-    m_spectrumPhy->StartTxSlCtrlFrames(pb, varTtiDuration);
-}
-
-Time
-NrUePhy::SlData(const NrSlVarTtiAllocInfo& varTtiInfo)
-{
-    NS_LOG_FUNCTION(this);
-
-    Time varTtiDuration = GetSymbolPeriod() * varTtiInfo.symLength;
-    Ptr<PacketBurst> pktBurst = PopPsschPacketBurst();
-    do
-    {
-        if (pktBurst && pktBurst->GetNPackets() > 0)
-        {
-            std::list<Ptr<Packet>> pkts = pktBurst->GetPackets();
-            LteRadioBearerTag bearerTag;
-            if (!pkts.front()->PeekPacketTag(bearerTag))
-            {
-                NS_FATAL_ERROR("No radio bearer tag");
-            }
-        }
-        else
-        {
-            // put an error, as something is wrong. The UE should not be scheduled
-            // if there is no data for it...
-            NS_FATAL_ERROR("The UE " << m_rnti << " has been scheduled without NR SL data");
-        }
-
-        NS_LOG_DEBUG("UE" << m_rnti << " TXing NR SL DATA frame for symbols " << varTtiInfo.symStart
-                          << "-" << varTtiInfo.symStart + varTtiInfo.symLength - 1 << "\t start "
-                          << Simulator::Now() << " end "
-                          << (Simulator::Now() + varTtiDuration).GetSeconds());
-        Simulator::Schedule(NanoSeconds(1.0),
-                            &NrUePhy::SendNrSlDataChannels,
-                            this,
-                            pktBurst,
-                            varTtiDuration - NanoSeconds(2.0),
-                            varTtiInfo);
-        pktBurst = PopPsschPacketBurst();
-    } while (pktBurst);
-    return varTtiDuration;
-}
-
-void
-NrUePhy::SendNrSlDataChannels(const Ptr<PacketBurst>& pb,
-                              const Time& varTtiDuration,
-                              const NrSlVarTtiAllocInfo& varTtiInfo)
-{
-    NS_LOG_FUNCTION(this);
-
-    std::vector<int> channelRbs;
-    uint32_t lastRbInPlusOne = (varTtiInfo.rbStart + varTtiInfo.rbLength);
-    for (uint32_t i = varTtiInfo.rbStart; i < lastRbInPlusOne; i++)
-    {
-        channelRbs.push_back(static_cast<int>(i));
-    }
-
-    SetSubChannelsForTransmission(channelRbs, varTtiInfo.symLength);
-    NS_LOG_DEBUG("Sending PSSCH on SfnSf " << m_currentSlot);
-    // Assume Sl Data channel is sent through the first stream
-    m_spectrumPhy->StartTxSlDataFrames(pb, varTtiDuration);
-}
-
-Time
-NrUePhy::SlFeedback(const NrSlVarTtiAllocInfo& varTtiInfo)
-{
-    NS_LOG_FUNCTION(this);
-
-    Time varTtiDuration = GetSymbolPeriod() * varTtiInfo.symLength;
-
-    // Walk the queue and insert all eligible feedback messages to the pktBurst.
-    // A message is eligible if the current slot is MinTimeGapPsfch slots or
-    // greater than the slot time associated with the feedback in the queue.
-
-    // Note:  Future revisions of this method will need to further filter
-    // feedback messages beyond simply whether MinTimeGapPsfch has been
-    // exceeded.  For instance, there may be two messages that require the
-    // same PSFCH resource (and the higher priority must be selected), or
-    // the UE may be expecting feedback on the PSFCH from a prior transmission
-    // at higher priority than the feedback queued for sending (in which
-    // case the sending of feedback in this slot should be suppressed).
-
-    std::list<Ptr<NrSlHarqFeedbackMessage>> feedbackList;
-    uint8_t gap =
-        m_slTxPool->GetMinTimeGapPsfch(GetBwpId(), m_nrSlUePhySapUser->GetSlActiveTxPoolId());
-    auto it = m_slHarqFbList.begin();
-    while (it != m_slHarqFbList.end())
-    {
-        if (m_currentSlot.Normalize() >= gap + it->first.Normalize())
-        {
-            NS_LOG_DEBUG("Inserting HARQ FB to packet burst from slot "
-                         << it->first.Normalize() << " for sender RNTI "
-                         << it->second->GetSlHarqFeedback().m_txRnti << " dstL2Id "
-                         << it->second->GetSlHarqFeedback().m_dstL2Id << " harqProcessId "
-                         << +it->second->GetSlHarqFeedback().m_harqProcessId << " bwpIndex "
-                         << +it->second->GetSlHarqFeedback().m_bwpIndex << " status "
-                         << (it->second->GetSlHarqFeedback().IsReceivedOk() ? "ACK" : "NACK"));
-            feedbackList.emplace_front(it->second);
-            auto prev = it++;
-            m_slHarqFbList.erase(prev);
-        }
-        else if (m_currentSlot.Normalize() >= it->first.Normalize())
-        {
-            NS_LOG_DEBUG("At slot "
-                         << m_currentSlot.Normalize() << "; suppressing (processing delay " << +gap
-                         << " slots from " << it->first.Normalize()
-                         << ") the insertion of HARQ FB for sender RNTI "
-                         << it->second->GetSlHarqFeedback().m_txRnti << " dstL2Id "
-                         << it->second->GetSlHarqFeedback().m_dstL2Id << " harqProcessId "
-                         << +it->second->GetSlHarqFeedback().m_harqProcessId << " bwpIndex "
-                         << +it->second->GetSlHarqFeedback().m_bwpIndex << " status "
-                         << (it->second->GetSlHarqFeedback().IsReceivedOk() ? "ACK" : "NACK"));
-            ++it;
-        }
-        else
-        {
-            ++it;
-        }
-    }
-    // It could be the case that among the eligible HARQ feedback messages to
-    // return, we have an earlier NACK that was later overridden by an ACK
-    // (possibly due to a blind retransmission).  Deliver only the latest
-    // one by iterating the feedback list and using a std::set to
-    // check for duplicates.  Because the previous iteration was in reverse,
-    // the unique feedback that we want to return will be the first encountered.
-    std::list<Ptr<NrSlHarqFeedbackMessage>> uniqueFeedbackList;
-    auto it2 = feedbackList.begin();
-    std::set<std::pair<uint16_t, uint8_t>> duplicateCheck;
-    while (it2 != feedbackList.end())
-    {
-        uint16_t rnti = (*it2)->GetSlHarqFeedback().m_txRnti;
-        uint8_t harqProcessId = (*it2)->GetSlHarqFeedback().m_harqProcessId;
-        // If insert() returns false, the (rnti, harqProcessId) already exists
-        if (duplicateCheck.insert(std::make_pair(rnti, harqProcessId)).second)
-        {
-            NS_LOG_DEBUG("Preparing HARQ feedback for sender RNTI " << rnti << " HARQ PID "
-                                                                    << +harqProcessId);
-            uniqueFeedbackList.emplace_front(*it2);
-        }
-        ++it2;
-    }
-    if (!uniqueFeedbackList.empty())
-    {
-        NS_LOG_DEBUG("UE" << m_rnti << " TXing NR SL FEEDBACK frame for symbols "
-                          << varTtiInfo.symStart << "-"
-                          << varTtiInfo.symStart + varTtiInfo.symLength - 1 << "\t start "
-                          << Simulator::Now().GetSeconds() << " end "
-                          << (Simulator::Now() + varTtiDuration).GetSeconds());
-
-        Simulator::Schedule(NanoSeconds(1.0),
-                            &NrUePhy::SendNrSlFbChannels,
-                            this,
-                            uniqueFeedbackList,
-                            varTtiDuration - NanoSeconds(2.0),
-                            varTtiInfo);
-    }
-    return varTtiDuration;
-}
-
-void
-NrUePhy::SendNrSlFbChannels(const std::list<Ptr<NrSlHarqFeedbackMessage>>& feedbackList,
-                            const Time& varTtiDuration,
-                            const NrSlVarTtiAllocInfo& varTtiInfo)
-{
-    NS_LOG_FUNCTION(this << varTtiDuration);
-
-    std::vector<int> channelRbs;
-    uint32_t lastRbInPlusOne = (varTtiInfo.rbStart + varTtiInfo.rbLength);
-    for (uint32_t i = varTtiInfo.rbStart; i < lastRbInPlusOne; i++)
-    {
-        channelRbs.push_back(static_cast<int>(i));
-    }
-
-    SetSubChannelsForTransmission(channelRbs, varTtiInfo.symLength);
-    NS_LOG_DEBUG("Sending PSFCH on SfnSf " << m_currentSlot);
-    m_spectrumPhy->StartTxSlFeedback(feedbackList, varTtiDuration);
-}
-
-void
-NrUePhy::PhyPscchPduReceived(const Ptr<Packet>& p, const SpectrumValue& psd)
-{
-    NS_LOG_FUNCTION(this);
-    NrSlSciF1aHeader sciF1a;
-    NrSlMacPduTag tag;
-
-    p->PeekHeader(sciF1a);
-    p->PeekPacketTag(tag);
-
-    std::unordered_set<uint32_t> destinations = m_nrSlUePhySapUser->GetSlRxDestinations();
-
-    NS_ASSERT_MSG(m_slRxPool != nullptr, "No receiving pools configured");
-    uint16_t sbChSize =
-        m_slRxPool->GetNrSlSubChSize(GetBwpId(), m_nrSlUePhySapUser->GetSlActiveTxPoolId());
-    uint16_t rbStart = sciF1a.GetIndexStartSubChannel() * sbChSize;
-    uint16_t lastRbInPlusOne = (sciF1a.GetLengthSubChannel() * sbChSize) + rbStart;
-    std::vector<int> rbBitMap;
-
-    for (uint16_t i = rbStart; i < lastRbInPlusOne; ++i)
-    {
-        rbBitMap.push_back(i);
-    }
-
-    double rsrpDbm = GetSidelinkRsrp(psd).second;
-
-    NS_LOG_DEBUG("Sending sensing data to UE MAC. RSRP "
-                 << rsrpDbm << " dBm "
-                 << " Frame " << m_currentSlot.GetFrame() << " SubFrame "
-                 << +m_currentSlot.GetSubframe() << " Slot " << m_currentSlot.GetSlot());
-
-    SensingData sensingData(m_currentSlot,
-                            sciF1a.GetSlResourceReservePeriod(),
-                            sciF1a.GetLengthSubChannel(),
-                            sciF1a.GetIndexStartSubChannel(),
-                            sciF1a.GetPriority(),
-                            rsrpDbm,
-                            sciF1a.GetGapReTx1(),
-                            sciF1a.GetIndexStartSbChReTx1(),
-                            sciF1a.GetGapReTx2(),
-                            sciF1a.GetIndexStartSbChReTx2());
-
-    m_nrSlUePhySapUser->ReceiveSensingData(sensingData);
-
-    auto it = destinations.find(tag.GetDstL2Id());
-    if (it != destinations.end())
-    {
-        NS_LOG_INFO("Received first stage SCI for destination " << *it << " from RNTI "
-                                                                << tag.GetRnti());
-        // Assume first stream
-        m_spectrumPhy->AddSlExpectedTb({UINT8_MAX,
-                                        tag.GetTbSize(),
-                                        sciF1a.GetMcs(),
-                                        UINT8_MAX,
-                                        tag.GetRnti(),
-                                        rbBitMap,
-                                        UINT8_MAX,
-                                        UINT8_MAX,
-                                        false,
-                                        tag.GetSymStart(),
-                                        tag.GetNumSym(),
-                                        tag.GetSfn()},
-                                       tag.GetDstL2Id());
-        SaveFutureSlRxGrants(sciF1a, tag, sbChSize);
-    }
-    else
-    {
-        NS_LOG_INFO("Ignoring PSCCH! Destination " << tag.GetDstL2Id()
-                                                   << " is not monitored by RNTI " << m_rnti);
-    }
-}
-
-void
-NrUePhy::PhyPsfchReceived(uint32_t sendingNodeId, SlHarqInfo harqInfo)
-{
-    NS_LOG_FUNCTION(this << sendingNodeId);
-    Simulator::ScheduleWithContext(m_netDevice->GetNode()->GetId(),
-                                   // Add PSFCH decode latency here
-                                   // XXX provisional value of 1 slot
-                                   GetSlotPeriod(),
-                                   &NrSlUePhySapUser::ReceivePsfch,
-                                   m_nrSlUePhySapUser,
-                                   sendingNodeId,
-                                   harqInfo);
-}
-
-void
-NrUePhy::SaveFutureSlRxGrants(const NrSlSciF1aHeader& sciF1a,
-                              const NrSlMacPduTag& tag,
-                              const uint16_t sbChSize)
-{
-    NS_LOG_FUNCTION(this);
-
-    if (sciF1a.GetGapReTx1() != std::numeric_limits<uint8_t>::max())
-    {
-        uint16_t rbStart = sciF1a.GetIndexStartSbChReTx1() * sbChSize;
-        uint16_t lastRbInPlusOne = (sciF1a.GetLengthSubChannel() * sbChSize) + rbStart;
-        std::vector<int> rbBitMap;
-        for (uint16_t i = rbStart; i < lastRbInPlusOne; ++i)
-        {
-            rbBitMap.push_back(i);
-        }
-        SlRxGrantInfo infoTb(tag.GetRnti(),
-                             tag.GetDstL2Id(),
-                             tag.GetTbSize(),
-                             sciF1a.GetMcs(),
-                             rbBitMap,
-                             tag.GetSymStart(),
-                             tag.GetNumSym(),
-                             tag.GetSfn().GetFutureSfnSf(sciF1a.GetGapReTx1()));
-        m_slRxGrants.push_back(infoTb);
-    }
-    if (sciF1a.GetGapReTx2() != std::numeric_limits<uint8_t>::max())
-    {
-        uint16_t rbStart = sciF1a.GetIndexStartSbChReTx2() * sbChSize;
-        uint16_t lastRbInPlusOne = (sciF1a.GetLengthSubChannel() * sbChSize) + rbStart;
-        std::vector<int> rbBitMap;
-        for (uint16_t i = rbStart; i < lastRbInPlusOne; ++i)
-        {
-            rbBitMap.push_back(i);
-        }
-        SlRxGrantInfo infoTb(tag.GetRnti(),
-                             tag.GetDstL2Id(),
-                             tag.GetTbSize(),
-                             sciF1a.GetMcs(),
-                             rbBitMap,
-                             tag.GetSymStart(),
-                             tag.GetNumSym(),
-                             tag.GetSfn().GetFutureSfnSf(sciF1a.GetGapReTx2()));
-        m_slRxGrants.push_back(infoTb);
-    }
-
-    NS_LOG_DEBUG("Expecting " << m_slRxGrants.size() << " future PSSCH slots without SCI 1-A");
-    for (const auto& it : m_slRxGrants)
-    {
-        NS_LOG_DEBUG("Expecting on SfnSf " << it.sfn);
-    }
-}
-
-void
-NrUePhy::SendSlExpectedTbInfo(const SfnSf& s)
-{
-    NS_LOG_FUNCTION(this);
-    if (!m_slRxGrants.empty())
-    {
-        auto expectedTbInfo = m_slRxGrants.front();
-        if (expectedTbInfo.sfn == s)
-        {
-            m_slRxGrants.pop_front();
-            m_spectrumPhy->AddSlExpectedTb({UINT8_MAX,
-                                            expectedTbInfo.tbSize,
-                                            expectedTbInfo.mcs,
-                                            UINT8_MAX,
-                                            expectedTbInfo.rnti,
-                                            expectedTbInfo.rbBitmap,
-                                            UINT8_MAX,
-                                            UINT8_MAX,
-                                            false,
-                                            expectedTbInfo.symStart,
-                                            expectedTbInfo.numSym,
-                                            expectedTbInfo.sfn},
-                                           expectedTbInfo.dstId);
-        }
-    }
-}
-
-void
-NrUePhy::PhyPsschPduReceived(const Ptr<PacketBurst>& pb, const SpectrumValue& psd)
-{
-    NS_LOG_FUNCTION(this);
-    LteRadioBearerTag tag;
-    NrSlSciF2aHeader sciF2a;
-    // Separate SCI stage 2 packet from data packets
-    std::list<Ptr<Packet>> dataPkts;
-    bool foundSci2 = false;
-    Ptr<PacketBurst> pdu = pb;
-    for (auto p : pdu->GetPackets())
-    {
-        LteRadioBearerTag tag;
-        if (!p->PeekPacketTag(tag))
-        {
-            // SCI stage 2 is the only packet in the packet burst, which does
-            // not have the tag
-            p->PeekHeader(sciF2a);
-            foundSci2 = true;
-        }
-        else
-        {
-            dataPkts.push_back(p);
-        }
-    }
-
-    NS_ABORT_MSG_IF(foundSci2 == false, "Did not find SCI stage 2 in PSSCH packet burst");
-    NS_ASSERT_MSG(!dataPkts.empty(), "Received PHY PDU with not data packets");
-
-    for (auto& pktIt : dataPkts)
-    {
-        uint32_t srcL2Id = sciF2a.GetSrcId();
-        Ptr<Packet> packet = pktIt->Copy();
-        packet->RemovePacketTag(tag);
-
-        double rsrpWatt = GetSidelinkRsrp(psd).first;
-
-        // We only monitor RSRP for relay discovery messages (LCID = 4)
-        if ((tag.GetLcid() == 4))
-        {
-            // Store RSRP for L1 filtering
-            std::map<uint32_t, UeSlRsrpMeasurementsElement>::iterator itRsrp =
-                m_ueSlRsrpMeasurementsMap.find(srcL2Id);
-            if (itRsrp == m_ueSlRsrpMeasurementsMap.end())
-            {
-                NS_LOG_LOGIC(this << "First RSRP measurement entry");
-                UeSlRsrpMeasurementsElement elt;
-                elt.rsrpSum = rsrpWatt;
-                elt.rsrpNum = 1;
-                m_ueSlRsrpMeasurementsMap.insert(
-                    std::pair<uint32_t, UeSlRsrpMeasurementsElement>(srcL2Id, elt));
-            }
-            else
-            {
-                NS_LOG_LOGIC(this << "RSRP Measurement entry found... Adding values");
-                itRsrp->second.rsrpSum += rsrpWatt;
-                itRsrp->second.rsrpNum++;
-            }
-        }
-    }
-
-    NS_LOG_INFO("Scheduling ReceivePsschPhyPdu after decode latency of "
-                << GetTbDecodeLatency().As(Time::US));
-    Simulator::ScheduleWithContext(m_netDevice->GetNode()->GetId(),
-                                   GetTbDecodeLatency(),
-                                   &NrSlUePhySapUser::ReceivePsschPhyPdu,
-                                   m_nrSlUePhySapUser,
-                                   pb);
-}
-
-std::pair<double, double>
-NrUePhy::GetSidelinkRsrp(SpectrumValue psd)
-{
-    // Measure instantaneous S-RSRP...
-    double sum = 0.0;
-    uint16_t numRB = 0;
-
-    for (Values::const_iterator itPi = psd.ConstValuesBegin(); itPi != psd.ConstValuesEnd(); itPi++)
-    {
-        if ((*itPi))
-        {
-            uint32_t scSpacing = 15000 * static_cast<uint32_t>(std::pow(2, GetNumerology()));
-            uint32_t RbWidthInHz =
-                static_cast<uint32_t>(scSpacing * NrSpectrumValueHelper::SUBCARRIERS_PER_RB);
-            double powerTxWattPerRb =
-                ((*itPi) * RbWidthInHz); // convert PSD [W/Hz] to linear power [W]
-            double powerTxWattPerRe =
-                (powerTxWattPerRb /
-                 NrSpectrumValueHelper::SUBCARRIERS_PER_RB); // power of one RE per RB
-            double PowerTxWattDmrsPerRb =
-                powerTxWattPerRe *
-                3.0; // TS 38.211 sec 8.4.1.3, 3 RE per RB carries PSCCH DMRS, i.e. Comb 4
-            sum += PowerTxWattDmrsPerRb;
-            numRB++;
-        }
-    }
-
-    double avrgRsrpWatt = (sum / ((double)numRB * 3.0));
-    double rsrpDbm = 10 * log10(1000 * (avrgRsrpWatt));
-
-    return std::make_pair(avrgRsrpWatt, rsrpDbm);
-}
-
-void
-NrUePhy::DoEnableUeSlRsrpMeasurements()
-{
-    NS_LOG_FUNCTION(this);
-    NS_ABORT_MSG_IF(m_rsrpFilterPeriod.IsZero(),
-                    "RSRP filter period must be non-zero; otherwise will endlessly loop");
-    Simulator::Schedule(m_rsrpFilterPeriod, &NrUePhy::ReportUeSlRsrpMeasurements, this);
-    m_ueSlRsrpMeasurementsEnabled = true;
-    // Let the RRC know the L1 measurement period
-    m_nrSlUeCphySapUser->SetRsrpFilterPeriod(m_rsrpFilterPeriod);
-}
-
-void
-NrUePhy::DoDisableUeSlRsrpMeasurements()
-{
-    NS_LOG_FUNCTION(this);
-    m_ueSlRsrpMeasurementsEnabled = false;
-}
-
-void
-NrUePhy::ReportUeSlRsrpMeasurements()
-{
-    NS_LOG_FUNCTION(this << m_rnti);
-    if (m_ueSlRsrpMeasurementsEnabled)
-    {
-        NrSlUeCphySapUser::RsrpElementsList rsrpList;
-        // Perform the L1 filtering
-        for (auto it = m_ueSlRsrpMeasurementsMap.begin(); it != m_ueSlRsrpMeasurementsMap.end();
-             it++)
-        {
-            // L1 filtering: linear average
-            double avgRsrpW = it->second.rsrpSum / static_cast<double>(it->second.rsrpNum);
-            // The stored values are in W, the report to the MAC/RRC should be in dBm
-            double avgRsrpDbm = 10 * log10(1000 * (avgRsrpW));
-
-            NS_LOG_INFO(this << " UE L2 Id " << it->first << " averaged RSRP (dBm) " << avgRsrpDbm
-                             << " number of measurements " << it->second.rsrpNum);
-            NrSlUeCphySapUser::RsrpElement elt;
-            elt.l2Id = it->first;
-            elt.rsrp = avgRsrpDbm;
-            rsrpList.rsrpMeasurementsList.push_back(elt);
-
-            // Save RSRP Measurements
-            m_reportUeSlRsrpMeasurements(m_rnti, it->first, avgRsrpDbm);
-        }
-
-        // Notify RRC
-        m_nrSlUeCphySapUser->ReceiveUeSlRsrpMeasurements(rsrpList);
-
-        // Schedule next L1 filtering
-        Simulator::Schedule(m_rsrpFilterPeriod, &NrUePhy::ReportUeSlRsrpMeasurements, this);
-
-        // Clear map after finishing the L1 filtering
-        m_ueSlRsrpMeasurementsMap.clear();
-    }
 }
 
 } // namespace ns3

@@ -369,10 +369,7 @@ main(int argc, char* argv[])
     Packet::EnablePrinting();
 
     // Configure NR module
-    Ptr<NrPointToPointEpcHelper> epcHelper = CreateObject<NrPointToPointEpcHelper>();
-    epcHelper->SetAttribute("S1uLinkDelay", TimeValue(MilliSeconds(0)));
-    Ptr<NrHelper> nrHelper = CreateObject<NrHelper>();
-    nrHelper->SetEpcHelper(epcHelper);
+    auto nrHelper = CreateObject<NrSlHelper>();
 
     /*
      * Spectrum division. We create one operational band, containing
@@ -404,7 +401,6 @@ main(int argc, char* argv[])
     nrHelper->SetUePhyAttribute("TxPower", DoubleValue(txPower));
 
     // NR Sidelink attribute of UE MAC, which are common for all the UEs
-    nrHelper->SetUeMacTypeId(NrSlUeMac::GetTypeId());
     nrHelper->SetUeMacAttribute("EnableSensing", BooleanValue(false));
     nrHelper->SetUeMacAttribute("T1", UintegerValue(2));
     nrHelper->SetUeMacAttribute("T2", UintegerValue(33));
@@ -432,20 +428,17 @@ main(int argc, char* argv[])
     }
 
     /**************************** SL configuration *****************************/
-    Ptr<NrSlHelper> nrSlHelper = CreateObject<NrSlHelper>();
-    nrSlHelper->SetEpcHelper(epcHelper);
-
     // SL error model
     std::string errorModel = "ns3::NrEesmIrT1";
-    nrSlHelper->SetSlErrorModel(errorModel);
-    nrSlHelper->SetUeSlAmcAttribute("AmcModel", EnumValue(NrAmc::ErrorModel));
+    nrHelper->SetSlErrorModel(errorModel);
+    nrHelper->SetUeSlAmcAttribute("AmcModel", EnumValue(NrAmc::ErrorModel));
 
     // SL scheduler
-    nrSlHelper->SetNrSlSchedulerTypeId(NrSlUeMacSchedulerFixedMcs::GetTypeId());
-    nrSlHelper->SetUeSlSchedulerAttribute("Mcs", UintegerValue(14));
-    nrSlHelper->SetUeSlSchedulerAttribute("PriorityToSps", BooleanValue(prioToSps));
+    nrHelper->SetNrSlSchedulerTypeId(NrSlUeMacSchedulerFixedMcs::GetTypeId());
+    nrHelper->SetUeSlSchedulerAttribute("Mcs", UintegerValue(14));
+    nrHelper->SetUeSlSchedulerAttribute("PriorityToSps", BooleanValue(prioToSps));
 
-    nrSlHelper->PrepareUeForSidelink(ueNetDev, bwpIdContainer);
+    nrHelper->PrepareUeForSidelink(ueNetDev, bwpIdContainer);
 
     // SlResourcePoolNr IE
     LteRrcSap::SlResourcePoolNr slResourcePoolNr;
@@ -537,23 +530,25 @@ main(int argc, char* argv[])
     slPreConfigNr.slPreconfigFreqInfoList[0] = slFreConfigCommonNr;
 
     // Communicate the above pre-configuration to the NrSlHelper
-    nrSlHelper->InstallNrSlPreConfiguration(ueNetDev, slPreConfigNr);
+    nrHelper->InstallNrSlPreConfiguration(ueNetDev, slPreConfigNr);
 
     /****************************** End SL Configuration ***********************/
 
     // Fix random streams
-    int64_t stream = 1;
-    stream += nrHelper->AssignStreams(ueNetDev, stream);
-    stream += nrSlHelper->AssignStreams(ueNetDev, stream);
+    int64_t streamBase{1000};
+    int64_t streamsUsed{0};
+    streamsUsed = nrHelper->AssignStreams(ueNetDev, streamBase);
+    NS_LOG_DEBUG("Used " << streamsUsed << " random variable streams in NrHelper");
 
     // Configure internet
     InternetStackHelper internet;
     internet.Install(ueNodeContainer);
-    stream += internet.AssignStreams(ueNodeContainer, stream);
+    streamBase = 2000;
+    streamsUsed = internet.AssignStreams(ueNodeContainer, streamBase);
+    NS_LOG_DEBUG("Used " << streamsUsed << " random variable streams in InternetStackHelper");
 
-    // Target IP
+    // Target multicast address; target unicast address set below
     Ipv4Address groupAddress4("225.0.0.0"); // use multicast address as destination
-    Ipv4Address unicastAddress4("7.0.0.3");
 
     /************************** Traffic flows configuration ********************/
     /*
@@ -686,19 +681,22 @@ main(int argc, char* argv[])
     Ptr<LteSlTft> tft3;
 
     // Assign IP address for the UEs
-    Ipv4InterfaceContainer ueIpIface;
-    ueIpIface = epcHelper->AssignUeIpv4Address(ueNetDev);
-    NS_LOG_DEBUG("Device 0 has address " << ueIpIface.GetAddress(0)); // 7.0.0.2
-    NS_LOG_DEBUG("Device 1 has address " << ueIpIface.GetAddress(1)); // 7.0.0.3
+    Ipv4AddressHelper addrHelper;
+    addrHelper.SetBase("7.0.0.0", "255.0.0.0");
+    auto ueIpIface = addrHelper.Assign(ueNetDev);
+    // Set target unicast address
+    Ipv4Address unicastAddress4 = ueIpIface.GetAddress(1); // should be 7.0.0.2
 
-    // Set the default gateway for the UEs
+    NS_LOG_DEBUG("Device 0 has address " << ueIpIface.GetAddress(0)); // 7.0.0.1
+    NS_LOG_DEBUG("Device 1 has address " << ueIpIface.GetAddress(1)); // 7.0.0.2
+
     Ipv4StaticRoutingHelper ipv4RoutingHelper;
-    for (uint32_t u = 0; u < ueNodeContainer.GetN(); ++u)
+    Ipv4InterfaceContainer::Iterator i;
+    for (i = ueIpIface.Begin(); i != ueIpIface.End(); ++i)
     {
-        Ptr<Node> ueNode = ueNodeContainer.Get(u);
-        Ptr<Ipv4StaticRouting> ueStaticRouting =
-            ipv4RoutingHelper.GetStaticRouting(ueNode->GetObject<Ipv4>());
-        ueStaticRouting->SetDefaultRoute(epcHelper->GetUeDefaultGatewayAddress(), 1);
+        const auto [ipv4, index] = *i;
+        auto ueStaticRouting = ipv4RoutingHelper.GetStaticRouting(ipv4);
+        ueStaticRouting->SetDefaultMulticastRoute(index);
     }
 
     // Create TFTs for each traffic profile and corresponding addresses/port
@@ -727,15 +725,15 @@ main(int argc, char* argv[])
     // Activate SL data radio bearers for each traffic flow template and profile
     if (!enableSingleFlow || enableSingleFlow == 1)
     {
-        nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, ueNetDev, tft1);
+        nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, ueNetDev, tft1);
     }
     if (!enableSingleFlow || enableSingleFlow == 2)
     {
-        nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, ueNetDev, tft2);
+        nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, ueNetDev, tft2);
     }
     if (!enableSingleFlow || enableSingleFlow == 3)
     {
-        nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, ueNetDev, tft3);
+        nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, ueNetDev, tft3);
     }
 
     /*

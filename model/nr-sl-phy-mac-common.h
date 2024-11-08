@@ -20,6 +20,35 @@ namespace ns3
 
 /**
  * \ingroup utils
+ * \brief Sidelink variant of TransportBlockInfo
+ */
+struct SlTransportBlockInfo : public TransportBlockInfo
+{
+    SlTransportBlockInfo(const ExpectedTb& expected)
+        : TransportBlockInfo(expected)
+    {
+    }
+
+    SlTransportBlockInfo() = delete;
+
+    SpectrumValue m_sinrPerceived; //!< SINR that is being update at the end of the DATA reception
+                                   //!< and is used for TB decoding
+    bool m_sinrUpdated{false};     //!< Flag to indicate the successful update of sinrPerceived
+
+    bool m_isSci2Corrupted{
+        false}; //!< True if the ErrorModel indicates that the SCI stage 2 is corrupted.
+                //    Filled at the end of data rx/tx
+    bool m_isHarqEnabled{false}; //!< Indicate if the SCI2A header had HARQ enabled
+    Ptr<NrErrorModelOutput>
+        m_outputEmForData; //!< Output of the Error Model (depends on the EM type) for data
+    Ptr<NrErrorModelOutput>
+        m_outputEmForSci2; //!< Output of the Error Model (depends on the EM type) for SCI stage 2
+    uint32_t m_pktIndex{std::numeric_limits<uint32_t>::max()}; //!< Index of the TB in the \p
+                                                               //!< m_slRxSigParamInfo buffer
+};
+
+/**
+ * \ingroup utils
  * \brief NrSlInfoListElement_s
  *
  * Named similar to http://www.eurecom.fr/~kaltenbe/fapi-2.0/structDlInfoListElement__s.html
@@ -570,6 +599,30 @@ struct ReservedResource
 };
 
 /**
+ * \ingroup utils
+ * \brief A struct that contains info for the SL HARQ
+ */
+struct SlHarqInfo : public HarqInfo
+{
+    uint16_t m_txRnti{55};     //!< Transmitter RNTI
+    uint16_t m_dstL2Id{65535}; //!< DST L2 ID
+
+    /**
+     * \brief Status of the SL Harq: ACKed or NACKed
+     */
+    enum HarqStatus
+    {
+        ACK,
+        NACK
+    } m_harqStatus{NACK}; //!< HARQ status
+
+    virtual bool IsReceivedOk() const override
+    {
+        return m_harqStatus == ACK;
+    }
+};
+
+/**
  * \brief Stream output operator for SensingData
  * \param os output stream
  * \param p struct whose parameter to output
@@ -593,6 +646,13 @@ std::ostream& operator<<(std::ostream& os, const ReservedResource& p);
  */
 std::ostream& operator<<(std::ostream& os, const SlGrantResource& p);
 
+/**
+ * \brief Stream output operator for SlHarqInfo
+ * \param os output stream
+ * \param p struct whose parameter to output
+ * \return updated stream
+ */
+std::ostream& operator<<(std::ostream& os, const SlHarqInfo& item);
 } // namespace ns3
 
 #endif /* NR_SL_PHY_MAC_COMMON_H_ */

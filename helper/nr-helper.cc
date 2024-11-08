@@ -19,7 +19,6 @@
 #include <ns3/bwp-manager-ue.h>
 #include <ns3/config.h>
 #include <ns3/epc-enb-application.h>
-#include <ns3/epc-helper.h>
 #include <ns3/epc-ue-nas.h>
 #include <ns3/epc-x2.h>
 #include <ns3/lte-chunk-processor.h>
@@ -585,8 +584,6 @@ NrHelper::CreateUePhy(const Ptr<Node>& n,
 
     if (m_harqEnabled)
     {
-        Ptr<NrHarqPhy> harq = Create<NrHarqPhy>(); // Create HARQ instance
-        channelPhy->InstallHarqPhyModule(harq);
         channelPhy->SetPhyDlHarqFeedbackCallback(dlHarqCallback);
     }
     channelPhy->SetIsEnb(false);
@@ -956,8 +953,6 @@ NrHelper::CreateGnbPhy(const Ptr<Node>& n,
     channelPhy->SetAntenna(antenna);
     cam->SetNrSpectrumPhy(channelPhy);
 
-    channelPhy->InstallHarqPhyModule(
-        Create<NrHarqPhy>()); // there should be one HARQ instance per NrSpectrumPhy
     channelPhy->SetIsEnb(true);
     channelPhy->SetDevice(dev); // each NrSpectrumPhy should have a pointer to device
     channelPhy->SetChannel(
@@ -1353,6 +1348,13 @@ NrHelper::DeActivateDedicatedEpsBearer(Ptr<NetDevice> ueDevice,
 }
 
 void
+NrHelper::SetUePhyTypeId(TypeId tid)
+{
+    NS_LOG_FUNCTION(this << GetTypeId().GetName());
+    m_uePhyFactory.SetTypeId(tid);
+}
+
+void
 NrHelper::SetUeMacTypeId(TypeId tid)
 {
     NS_LOG_FUNCTION(this << GetTypeId().GetName());
@@ -1378,6 +1380,13 @@ NrHelper::SetGnbSpectrumAttribute(const std::string& n, const AttributeValue& v)
 {
     NS_LOG_FUNCTION(this);
     m_gnbSpectrumFactory.Set(n, v);
+}
+
+void
+NrHelper::SetUeSpectrumTypeId(TypeId tid)
+{
+    NS_LOG_FUNCTION(this << GetTypeId().GetName());
+    m_ueSpectrumFactory.SetTypeId(tid);
 }
 
 void

@@ -243,7 +243,7 @@ a future selection window, according to the algorithm and constraints specified
 in Section 8.1.4 of [TS38214]_.  Although the standard describes this calculation
 of available resources as being performed at the ``PHY`` layer, in this ns-3
 model, it is actually implemented in the ``NrSlUeMac`` based on sensing data
-that has been provided by the ``NrUePhy``.  Then, for an active
+that has been provided by the ``NrSlUePhy``.  Then, for an active
 pool configured by the ``RRC``, it computes the candidate resources
 for sidelink transmission based on the selection window
 parameters, :math:`T_\text{1}`, :math:`T_\text{2,min}`, and :math:`T_\text{2}`,

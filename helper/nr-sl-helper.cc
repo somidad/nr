@@ -6,8 +6,6 @@
 
 #include "nr-sl-helper.h"
 
-#include "nr-point-to-point-epc-helper.h"
-
 #include <ns3/abort.h>
 #include <ns3/bandwidth-part-ue.h>
 #include <ns3/epc-ue-nas.h>
@@ -20,11 +18,12 @@
 #include <ns3/nr-amc.h>
 #include <ns3/nr-sl-bwp-manager-ue.h>
 #include <ns3/nr-sl-chunk-processor.h>
+#include <ns3/nr-sl-spectrum-phy.h>
 #include <ns3/nr-sl-ue-mac-scheduler-fixed-mcs.h>
 #include <ns3/nr-sl-ue-mac-scheduler.h>
 #include <ns3/nr-sl-ue-mac.h>
+#include <ns3/nr-sl-ue-phy.h>
 #include <ns3/nr-sl-ue-rrc.h>
-#include <ns3/nr-spectrum-phy.h>
 #include <ns3/nr-ue-mac.h>
 #include <ns3/nr-ue-net-device.h>
 #include <ns3/nr-ue-phy.h>
@@ -44,6 +43,12 @@ NrSlHelper::NrSlHelper()
 
 {
     NS_LOG_FUNCTION(this);
+    // Override default configuration of NrHelper factories
+    SetUePhyTypeId(NrSlUePhy::GetTypeId());
+    SetUeSpectrumTypeId(NrSlSpectrumPhy::GetTypeId());
+    SetUeMacTypeId(NrSlUeMac::GetTypeId());
+    SetBwpManagerTypeId(NrSlBwpManagerUe::GetTypeId());
+    // Some SL specific factories
     m_ueSlAmcFactory.SetTypeId(NrAmc::GetTypeId());
     m_ueSlSchedulerFactory.SetTypeId(NrSlUeMacSchedulerFixedMcs::GetTypeId());
 }
@@ -57,7 +62,7 @@ TypeId
 NrSlHelper::GetTypeId()
 {
     static TypeId tid = TypeId("ns3::NrSlHelper")
-                            .SetParent<Object>()
+                            .SetParent<NrHelper>()
                             .SetGroupName("nr")
                             .AddConstructor<NrSlHelper>();
     return tid;
@@ -67,7 +72,7 @@ void
 NrSlHelper::DoDispose()
 {
     NS_LOG_FUNCTION(this);
-    Object::DoDispose();
+    NrHelper::DoDispose();
 }
 
 void
@@ -95,18 +100,9 @@ NrSlHelper::CreateUeSlAmc() const
 }
 
 void
-NrSlHelper::SetEpcHelper(const Ptr<NrPointToPointEpcHelper>& epcHelper)
-{
-    NS_LOG_FUNCTION(this);
-    m_epcHelper = epcHelper;
-}
-
-void
 NrSlHelper::ActivateNrSlBearer(Time activationTime, NetDeviceContainer ues, const Ptr<LteSlTft> tft)
 {
     NS_LOG_FUNCTION(this);
-    NS_ASSERT_MSG(m_epcHelper,
-                  "NR Sidelink activation requires EpcHelper to be registered with the NrSlHelper");
     Simulator::Schedule(activationTime, &NrSlHelper::DoActivateNrSlBearer, this, ues, tft);
 }
 
@@ -181,9 +177,10 @@ NrSlHelper::PrepareSingleUeForSidelink(Ptr<NrUeNetDevice> nrUeDev,
         lteUeRrc->SetNrSlUeCmacSapProvider(itBwps, nrSlUeMac->GetNrSlUeCmacSapProvider());
         nrSlUeMac->SetNrSlUeCmacSapUser(lteUeRrc->GetNrSlUeCmacSapUser());
         // SAPs between the RRC and the NR UE PHY
-        nrUeDev->GetPhy(itBwps)->SetNrSlUeCphySapUser(lteUeRrc->GetNrSlUeCphySapUser());
-        lteUeRrc->SetNrSlUeCphySapProvider(itBwps,
-                                           nrUeDev->GetPhy(itBwps)->GetNrSlUeCphySapProvider());
+        auto nrSlUePhy = nrUeDev->GetPhy(itBwps)->GetObject<NrSlUePhy>();
+        NS_ASSERT_MSG(nrSlUePhy, "No NrSlUePhy found");
+        nrSlUePhy->SetNrSlUeCphySapUser(lteUeRrc->GetNrSlUeCphySapUser());
+        lteUeRrc->SetNrSlUeCphySapProvider(itBwps, nrSlUePhy->GetNrSlUeCphySapProvider());
         // NR SL UE MAC scheduler
         Ptr<NrSlUeMacScheduler> sched = m_ueSlSchedulerFactory.Create<NrSlUeMacScheduler>();
         NS_ABORT_MSG_IF(sched == nullptr, "sched is null");
@@ -195,44 +192,47 @@ NrSlHelper::PrepareSingleUeForSidelink(Ptr<NrUeNetDevice> nrUeDev,
         Ptr<NrSlUeMacScheduler> schedNs3 = sched->GetObject<NrSlUeMacScheduler>();
         schedNs3->InstallAmc(slAmc);
         // SAPs between MAC and PHY
-        nrUeDev->GetPhy(itBwps)->SetNrSlUePhySapUser(nrSlUeMac->GetNrSlUePhySapUser());
-        nrSlUeMac->SetNrSlUePhySapProvider(nrUeDev->GetPhy(itBwps)->GetNrSlUePhySapProvider());
+        nrSlUePhy->SetNrSlUePhySapUser(nrSlUeMac->GetNrSlUePhySapUser());
+        nrSlUeMac->SetNrSlUePhySapProvider(nrSlUePhy->GetNrSlUePhySapProvider());
         // Error model type in NRSpectrumPhy for NR SL
-        Ptr<NrSpectrumPhy> spectrumPhy = nrUeDev->GetPhy(itBwps)->GetSpectrumPhy();
+        Ptr<NrSlSpectrumPhy> spectrumPhy =
+            nrSlUePhy->GetSpectrumPhy()->GetObject<NrSlSpectrumPhy>();
+        NS_ASSERT_MSG(spectrumPhy, "Did not find NrSlSpectrumPhy object");
         spectrumPhy->SetAttribute("SlErrorModelType", typeIdValue);
-        // Set AMC in NrSpectrumPhy to compute PSCCH TB size
+        // Set AMC in NrSlSpectrumPhy to compute PSCCH TB size
         spectrumPhy->SetSlAmc(slAmc);
         // Set SL chunk processor
         Ptr<NrSlChunkProcessor> pSlSinr = Create<NrSlChunkProcessor>();
-        pSlSinr->AddCallback(MakeCallback(&NrSpectrumPhy::UpdateSlSinrPerceived, spectrumPhy));
+        pSlSinr->AddCallback(MakeCallback(&NrSlSpectrumPhy::UpdateSlSinrPerceived, spectrumPhy));
         spectrumPhy->AddSlSinrChunkProcessor(pSlSinr);
         Ptr<NrSlChunkProcessor> pSlSignal = Create<NrSlChunkProcessor>();
-        pSlSignal->AddCallback(MakeCallback(&NrSpectrumPhy::UpdateSlSignalPerceived, spectrumPhy));
+        pSlSignal->AddCallback(
+            MakeCallback(&NrSlSpectrumPhy::UpdateSlSignalPerceived, spectrumPhy));
         spectrumPhy->AddSlSignalChunkProcessor(pSlSignal);
 
         std::function<void(const Ptr<Packet>&, const SpectrumValue&)> pscchPhyPduCallback;
-        pscchPhyPduCallback = std::bind(&NrUePhy::PhyPscchPduReceived,
-                                        nrUeDev->GetPhy(itBwps),
+        pscchPhyPduCallback = std::bind(&NrSlUePhy::PhyPscchPduReceived,
+                                        nrSlUePhy,
                                         std::placeholders::_1,
                                         std::placeholders::_2);
         spectrumPhy->SetNrPhyRxPscchEndOkCallback(pscchPhyPduCallback);
 
         std::function<void(const Ptr<PacketBurst>&, const SpectrumValue&)> psschPhyPduOkCallback;
-        psschPhyPduOkCallback = std::bind(&NrUePhy::PhyPsschPduReceived,
-                                          nrUeDev->GetPhy(itBwps),
+        psschPhyPduOkCallback = std::bind(&NrSlUePhy::PhyPsschPduReceived,
+                                          nrSlUePhy,
                                           std::placeholders::_1,
                                           std::placeholders::_2);
         spectrumPhy->SetNrPhyRxPsschEndOkCallback(psschPhyPduOkCallback);
 
         std::function<void(uint32_t, SlHarqInfo)> psfchCallback;
-        psfchCallback = std::bind(&NrUePhy::PhyPsfchReceived,
-                                  nrUeDev->GetPhy(itBwps),
+        psfchCallback = std::bind(&NrSlUePhy::PhyPsfchReceived,
+                                  nrSlUePhy,
                                   std::placeholders::_1,
                                   std::placeholders::_2);
         spectrumPhy->SetNrPhyRxSlPsfchCallback(psfchCallback);
 
         spectrumPhy->SetPhySlHarqFeedbackCallback(
-            MakeCallback(&NrUePhy::EnqueueSlHarqFeedback, nrUeDev->GetPhy(itBwps)));
+            MakeCallback(&NrSlUePhy::EnqueueSlHarqFeedback, nrSlUePhy));
 
         // Set the SAP of NR UE MAC in SL BWP manager
         bool bwpmTest =
@@ -305,16 +305,14 @@ NrSlHelper::ConfigUeParams(const Ptr<NrUeNetDevice>& dev,
             auto it = bwpIds.find(index);
             NS_ABORT_MSG_IF(it == bwpIds.end(),
                             "UE is not prepared to use BWP id " << +index << " for SL");
-            dev->GetPhy(index)->RegisterSlBwpId(static_cast<uint16_t>(index));
-            dev->GetPhy(index)->SetNumerology(
-                freqCommon.slBwpList[index].slBwpGeneric.bwp.numerology);
-            dev->GetPhy(index)->SetSymbolsPerSlot(
+            auto nrSlUePhy = dev->GetPhy(index)->GetObject<NrSlUePhy>();
+            nrSlUePhy->RegisterSlBwpId(static_cast<uint16_t>(index));
+            nrSlUePhy->SetNumerology(freqCommon.slBwpList[index].slBwpGeneric.bwp.numerology);
+            nrSlUePhy->SetSymbolsPerSlot(
                 freqCommon.slBwpList[index].slBwpGeneric.bwp.symbolsPerSlots);
-            dev->GetPhy(index)->PreConfigSlBandwidth(
-                freqCommon.slBwpList[index].slBwpGeneric.bwp.bandwidth);
-            dev->GetPhy(index)->SetNumRbPerRbg(
-                freqCommon.slBwpList[index].slBwpGeneric.bwp.rbPerRbg);
-            dev->GetPhy(index)->SetPattern(tddPattern);
+            nrSlUePhy->PreConfigSlBandwidth(freqCommon.slBwpList[index].slBwpGeneric.bwp.bandwidth);
+            nrSlUePhy->SetNumRbPerRbg(freqCommon.slBwpList[index].slBwpGeneric.bwp.rbPerRbg);
+            nrSlUePhy->SetPattern(tddPattern);
             found = true;
         }
     }
@@ -388,7 +386,7 @@ NrSlHelper::AssignStreams(NetDeviceContainer c, int64_t stream)
             }
         }
     }
-
+    currentStream += NrHelper::AssignStreams(c, currentStream);
     return (currentStream - stream);
 }
 

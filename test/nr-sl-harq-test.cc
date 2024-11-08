@@ -42,9 +42,11 @@
 #include <ns3/nr-sl-comm-resource-pool-factory.h>
 #include <ns3/nr-sl-comm-resource-pool.h>
 #include <ns3/nr-sl-helper.h>
+#include <ns3/nr-sl-spectrum-phy.h>
 #include <ns3/nr-sl-ue-mac-harq.h>
 #include <ns3/nr-sl-ue-mac-scheduler-fixed-mcs.h>
-#include <ns3/nr-spectrum-phy.h>
+#include <ns3/nr-sl-ue-mac.h>
+#include <ns3/nr-sl-ue-phy.h>
 #include <ns3/nr-ue-mac.h>
 #include <ns3/nr-ue-net-device.h>
 #include <ns3/nr-ue-phy.h>
@@ -306,8 +308,7 @@ class TestSidelinkHarq : public TestCase
     /**
      *
      */
-    virtual void ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
-                               Ptr<NrPointToPointEpcHelper> epcHelper,
+    virtual void ConfigureTfts(Ptr<NrSlHelper> nrHelper,
                                const NodeContainer& ueContainer,
                                const NetDeviceContainer& ueNetDevices,
                                Ipv4Address groupAddress4,
@@ -522,8 +523,7 @@ TestSidelinkHarq::ConfigureApplications(Address remoteAddress,
 }
 
 void
-TestSidelinkHarq::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
-                                Ptr<NrPointToPointEpcHelper> epcHelper,
+TestSidelinkHarq::ConfigureTfts(Ptr<NrSlHelper> nrHelper,
                                 const NodeContainer& ueContainer,
                                 const NetDeviceContainer& ueNetDevices,
                                 Ipv4Address groupAddress4,
@@ -545,35 +545,34 @@ TestSidelinkHarq::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
     slInfo.m_pdb = Seconds(0); // NrSlUeMac::T2 will be used
     if (!m_useIpv6)
     {
-        Ipv4InterfaceContainer ueIpIface;
-        ueIpIface = epcHelper->AssignUeIpv4Address(ueNetDevices);
-        // set the default gateway for the UE
-        Ipv4StaticRoutingHelper ipv4RoutingHelper;
-        for (uint32_t u = 0; u < ueContainer.GetN(); ++u)
-        {
-            Ptr<Node> ueNode = ueContainer.Get(u);
-            // Set the default gateway for the UE
-            Ptr<Ipv4StaticRouting> ueStaticRouting =
-                ipv4RoutingHelper.GetStaticRouting(ueNode->GetObject<Ipv4>());
-            ueStaticRouting->SetDefaultRoute(epcHelper->GetUeDefaultGatewayAddress(), 1);
-        }
+        Ipv4AddressHelper addrHelper;
+        addrHelper.SetBase("7.0.0.0", "255.0.0.0");
+        auto ueIpIface = addrHelper.Assign(ueNetDevices);
         localAddress = InetSocketAddress(Ipv4Address::GetAny(), port);
         if (m_castType == "groupcast" || m_castType == "broadcast")
         {
+            Ipv4StaticRoutingHelper ipv4RoutingHelper;
+            Ipv4InterfaceContainer::Iterator i;
+            for (i = ueIpIface.Begin(); i != ueIpIface.End(); ++i)
+            {
+                const auto [ipv4, index] = *i;
+                auto ueStaticRouting = ipv4RoutingHelper.GetStaticRouting(ipv4);
+                ueStaticRouting->SetDefaultMulticastRoute(index);
+            }
             slInfo.m_dstL2Id = 224;
             remoteAddress = InetSocketAddress(groupAddress4, port);
             // The first node is a transmitter; others are receivers
             NetDeviceContainer transmitDevices;
             transmitDevices.Add(ueNetDevices.Get(0));
             tft = Create<LteSlTft>(LteSlTft::Direction::TRANSMIT, groupAddress4, slInfo);
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, transmitDevices, tft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, transmitDevices, tft);
             NetDeviceContainer receiveDevices;
             for (uint32_t u = 1; u < ueContainer.GetN(); ++u)
             {
                 receiveDevices.Add(ueNetDevices.Get(u));
             }
             tft = Create<LteSlTft>(LteSlTft::Direction::RECEIVE, groupAddress4, slInfo);
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receiveDevices, tft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receiveDevices, tft);
         }
         else
         {
@@ -584,46 +583,45 @@ TestSidelinkHarq::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
             // Activate on only two NetDevices-- client and server
             NetDeviceContainer transmit;
             transmit.Add(ueNetDevices.Get(0));
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, transmit, tft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, transmit, tft);
             tft =
                 Create<LteSlTft>(LteSlTft::Direction::RECEIVE, ueIpIface.GetAddress(1, 0), slInfo);
             NetDeviceContainer receive;
             receive.Add(ueNetDevices.Get(1));
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receive, tft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receive, tft);
         }
     }
     else
     {
-        Ipv6InterfaceContainer ueIpIface;
-        ueIpIface = epcHelper->AssignUeIpv6Address(ueNetDevices);
-
-        // set the default gateway for the UE
-        Ipv6StaticRoutingHelper ipv6RoutingHelper;
-        for (uint32_t u = 0; u < ueContainer.GetN(); ++u)
-        {
-            Ptr<Node> ueNode = ueContainer.Get(u);
-            // Set the default gateway for the UE
-            Ptr<Ipv6StaticRouting> ueStaticRouting =
-                ipv6RoutingHelper.GetStaticRouting(ueNode->GetObject<Ipv6>());
-            ueStaticRouting->SetDefaultRoute(epcHelper->GetUeDefaultGatewayAddress6(), 1);
-        }
+        Ipv6AddressHelper addrHelper;
+        // we use a /64 IPv6 net all UEs
+        addrHelper.SetBase("7777:f00d::", Ipv6Prefix(64));
+        auto ueIpIface = addrHelper.Assign(ueNetDevices);
         localAddress = Inet6SocketAddress(Ipv6Address::GetAny(), port);
         if (m_castType == "groupcast" || m_castType == "broadcast")
         {
+            Ipv6StaticRoutingHelper ipv6RoutingHelper;
+            Ipv6InterfaceContainer::Iterator i;
+            for (i = ueIpIface.Begin(); i != ueIpIface.End(); ++i)
+            {
+                const auto [ipv6, index] = *i;
+                auto ueStaticRouting = ipv6RoutingHelper.GetStaticRouting(ipv6);
+                ueStaticRouting->SetDefaultMulticastRoute(index);
+            }
             slInfo.m_dstL2Id = 224;
             remoteAddress = Inet6SocketAddress(groupAddress6, port);
             // The first node is a transmitter; others are receivers
             NetDeviceContainer transmitDevices;
             transmitDevices.Add(ueNetDevices.Get(0));
             tft = Create<LteSlTft>(LteSlTft::Direction::TRANSMIT, groupAddress6, slInfo);
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, transmitDevices, tft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, transmitDevices, tft);
             NetDeviceContainer receiveDevices;
             for (uint32_t u = 1; u < ueContainer.GetN(); ++u)
             {
                 receiveDevices.Add(ueNetDevices.Get(u));
             }
             tft = Create<LteSlTft>(LteSlTft::Direction::RECEIVE, groupAddress6, slInfo);
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receiveDevices, tft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receiveDevices, tft);
         }
         else
         {
@@ -634,12 +632,12 @@ TestSidelinkHarq::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
             // Activate on only two NetDevices-- client and server
             NetDeviceContainer transmit;
             transmit.Add(ueNetDevices.Get(0));
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, transmit, tft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, transmit, tft);
             tft =
                 Create<LteSlTft>(LteSlTft::Direction::RECEIVE, ueIpIface.GetAddress(1, 0), slInfo);
             NetDeviceContainer receive;
             receive.Add(ueNetDevices.Get(1));
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receive, tft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receive, tft);
         }
     }
 }
@@ -873,10 +871,7 @@ TestSidelinkHarq::DoRun()
     mobility.Install(ueContainer);
 
     // NR configuration
-    Ptr<NrPointToPointEpcHelper> epcHelper = CreateObject<NrPointToPointEpcHelper>();
-    Ptr<NrHelper> nrHelper = CreateObject<NrHelper>();
-    nrHelper->SetUeMacTypeId(NrSlUeMac::GetTypeId());
-    nrHelper->SetEpcHelper(epcHelper);
+    auto nrHelper = CreateObject<NrSlHelper>();
 
     BandwidthPartInfoPtrVector allBwps;
     CcBwpCreator ccBwpCreator;
@@ -899,8 +894,6 @@ TestSidelinkHarq::DoRun()
 
     nrHelper->InitializeOperationBand(&bandSl);
     allBwps = CcBwpCreator::GetAllBwps({bandSl});
-
-    epcHelper->SetAttribute("S1uLinkDelay", TimeValue(MilliSeconds(0)));
 
     nrHelper->SetUeAntennaAttribute("NumRows", UintegerValue(1));
     nrHelper->SetUeAntennaAttribute("NumColumns", UintegerValue(2));
@@ -942,24 +935,20 @@ TestSidelinkHarq::DoRun()
         DynamicCast<NrUeNetDevice>(*it)->UpdateConfig();
     }
 
-    Ptr<NrSlHelper> nrSlHelper = CreateObject<NrSlHelper>();
-    // Put the pointers inside NrSlHelper
-    nrSlHelper->SetEpcHelper(epcHelper);
-
     std::string errorModel = "ns3::test::SlHarqTestErrorModel";
-    nrSlHelper->SetSlErrorModel(errorModel);
-    nrSlHelper->SetUeSlAmcAttribute("AmcModel", EnumValue(NrAmc::ErrorModel));
+    nrHelper->SetSlErrorModel(errorModel);
+    nrHelper->SetUeSlAmcAttribute("AmcModel", EnumValue(NrAmc::ErrorModel));
 
-    nrSlHelper->SetNrSlSchedulerTypeId(NrSlUeMacSchedulerFixedMcs::GetTypeId());
-    nrSlHelper->SetUeSlSchedulerAttribute("Mcs", UintegerValue(14));
+    nrHelper->SetNrSlSchedulerTypeId(NrSlUeMacSchedulerFixedMcs::GetTypeId());
+    nrHelper->SetUeSlSchedulerAttribute("Mcs", UintegerValue(14));
 
-    nrSlHelper->PrepareUeForSidelink(ueNetDevices, bwpIdContainer);
+    nrHelper->PrepareUeForSidelink(ueNetDevices, bwpIdContainer);
 
     if (m_tblerVector.size())
     {
         // Install error vector override on first UE receiver
         Ptr<NrUeNetDevice> dev = ueNetDevices.Get(1)->GetObject<NrUeNetDevice>();
-        Ptr<NrSpectrumPhy> sPhy = dev->GetPhy(0)->GetSpectrumPhy();
+        Ptr<NrSlSpectrumPhy> sPhy = dev->GetPhy(0)->GetSpectrumPhy()->GetObject<NrSlSpectrumPhy>();
         NS_ABORT_MSG_UNLESS(sPhy, "No NrSpectrumPhy pointer");
         Ptr<SlHarqTestErrorModel> slHarqTestErrorModel = CreateObject<SlHarqTestErrorModel>();
         slHarqTestErrorModel->SetTblerVector(m_tblerVector);
@@ -1046,18 +1035,15 @@ TestSidelinkHarq::DoRun()
     slPreConfigNr.slPreconfigFreqInfoList[0] = slFreConfigCommonNr;
 
     // Communicate the above pre-configuration to the NrSlHelper
-    nrSlHelper->InstallNrSlPreConfiguration(ueNetDevices, slPreConfigNr);
+    nrHelper->InstallNrSlPreConfiguration(ueNetDevices, slPreConfigNr);
 
     /*
      * Fix the random streams
      */
-    int64_t streamBase = 1;
+    int64_t streamBase = 1000;
     int64_t streamsUsed;
     streamsUsed = nrHelper->AssignStreams(ueNetDevices, streamBase);
     NS_LOG_DEBUG("Used " << streamsUsed << " random variable streams in NrHelper");
-    streamBase = 1000; // Pick a sufficiently large number to avoid overlap with previous
-    streamsUsed = nrSlHelper->AssignStreams(ueNetDevices, streamBase);
-    NS_LOG_DEBUG("Used " << streamsUsed << " random variable streams in NrSlHelper");
 
     /*
      * Configure the IP stack, and activate NR sidelink bearer (s)
@@ -1077,8 +1063,7 @@ TestSidelinkHarq::DoRun()
     Address localAddress;
     uint16_t port = 8000;
 
-    ConfigureTfts(nrSlHelper,
-                  epcHelper,
+    ConfigureTfts(nrHelper,
                   ueContainer,
                   ueNetDevices,
                   groupAddress4,
@@ -1219,8 +1204,7 @@ class TestSidelinkHarqTwoSenders : public TestSidelinkHarq
 
   protected:
     // Documented in TestSidelinkHarq
-    void ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
-                       Ptr<NrPointToPointEpcHelper> epcHelper,
+    void ConfigureTfts(Ptr<NrSlHelper> nrHelper,
                        const NodeContainer& ueContainer,
                        const NetDeviceContainer& ueNetDevices,
                        Ipv4Address groupAddress4,
@@ -1239,8 +1223,7 @@ class TestSidelinkHarqTwoSenders : public TestSidelinkHarq
 };
 
 void
-TestSidelinkHarqTwoSenders::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
-                                          Ptr<NrPointToPointEpcHelper> epcHelper,
+TestSidelinkHarqTwoSenders::ConfigureTfts(Ptr<NrSlHelper> nrHelper,
                                           const NodeContainer& ueContainer,
                                           const NetDeviceContainer& ueNetDevices,
                                           Ipv4Address groupAddress4,
@@ -1263,21 +1246,20 @@ TestSidelinkHarqTwoSenders::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
     slInfo.m_pdb = Seconds(0); // NrSlUeMac::T2 will be used
     if (!m_useIpv6)
     {
-        Ipv4InterfaceContainer ueIpIface;
-        ueIpIface = epcHelper->AssignUeIpv4Address(ueNetDevices);
-        // set the default gateway for the UE
-        Ipv4StaticRoutingHelper ipv4RoutingHelper;
-        for (uint32_t u = 0; u < ueContainer.GetN(); ++u)
-        {
-            Ptr<Node> ueNode = ueContainer.Get(u);
-            // Set the default gateway for the UE
-            Ptr<Ipv4StaticRouting> ueStaticRouting =
-                ipv4RoutingHelper.GetStaticRouting(ueNode->GetObject<Ipv4>());
-            ueStaticRouting->SetDefaultRoute(epcHelper->GetUeDefaultGatewayAddress(), 1);
-        }
+        Ipv4AddressHelper addrHelper;
+        addrHelper.SetBase("7.0.0.0", "255.0.0.0");
+        auto ueIpIface = addrHelper.Assign(ueNetDevices);
         localAddress = InetSocketAddress(Ipv4Address::GetAny(), port);
         if (m_castType == "groupcast" || m_castType == "broadcast")
         {
+            Ipv4StaticRoutingHelper ipv4RoutingHelper;
+            Ipv4InterfaceContainer::Iterator i;
+            for (i = ueIpIface.Begin(); i != ueIpIface.End(); ++i)
+            {
+                const auto [ipv4, index] = *i;
+                auto ueStaticRouting = ipv4RoutingHelper.GetStaticRouting(ipv4);
+                ueStaticRouting->SetDefaultMulticastRoute(index);
+            }
             slInfo.m_dstL2Id = 224;
             remoteAddress = InetSocketAddress(groupAddress4, port);
             // Two senders in this test case
@@ -1285,18 +1267,16 @@ TestSidelinkHarqTwoSenders::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
             transmitDevices.Add(ueNetDevices.Get(0));
             transmitDevices.Add(ueNetDevices.Get(2));
             transmitTft = Create<LteSlTft>(LteSlTft::Direction::TRANSMIT, groupAddress4, slInfo);
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime,
-                                           transmitDevices,
-                                           transmitTft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime,
+                                         transmitDevices,
+                                         transmitTft);
             NetDeviceContainer receiveDevices;
             for (uint32_t u = 0; u < ueContainer.GetN(); ++u)
             {
                 receiveDevices.Add(ueNetDevices.Get(u));
             }
             receiveTft = Create<LteSlTft>(LteSlTft::Direction::RECEIVE, groupAddress4, slInfo);
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime,
-                                           receiveDevices,
-                                           receiveTft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receiveDevices, receiveTft);
         }
         else
         {
@@ -1307,7 +1287,7 @@ TestSidelinkHarqTwoSenders::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
             NetDeviceContainer transmit;
             transmit.Add(ueNetDevices.Get(0));
             transmit.Add(ueNetDevices.Get(2));
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, transmit, transmitTft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, transmit, transmitTft);
             receiveTft =
                 Create<LteSlTft>(LteSlTft::Direction::RECEIVE, ueIpIface.GetAddress(1, 0), slInfo);
             NetDeviceContainer receive;
@@ -1319,27 +1299,26 @@ TestSidelinkHarqTwoSenders::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
                     receive.Add(ueNetDevices.Get(u));
                 }
             }
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receive, receiveTft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receive, receiveTft);
         }
     }
     else
     {
-        Ipv6InterfaceContainer ueIpIface;
-        ueIpIface = epcHelper->AssignUeIpv6Address(ueNetDevices);
-
-        // set the default gateway for the UE
-        Ipv6StaticRoutingHelper ipv6RoutingHelper;
-        for (uint32_t u = 0; u < ueContainer.GetN(); ++u)
-        {
-            Ptr<Node> ueNode = ueContainer.Get(u);
-            // Set the default gateway for the UE
-            Ptr<Ipv6StaticRouting> ueStaticRouting =
-                ipv6RoutingHelper.GetStaticRouting(ueNode->GetObject<Ipv6>());
-            ueStaticRouting->SetDefaultRoute(epcHelper->GetUeDefaultGatewayAddress6(), 1);
-        }
+        Ipv6AddressHelper addrHelper;
+        // we use a /64 IPv6 net all UEs
+        addrHelper.SetBase("7777:f00d::", Ipv6Prefix(64));
+        auto ueIpIface = addrHelper.Assign(ueNetDevices);
         localAddress = Inet6SocketAddress(Ipv6Address::GetAny(), port);
         if (m_castType == "groupcast" || m_castType == "broadcast")
         {
+            Ipv6StaticRoutingHelper ipv6RoutingHelper;
+            Ipv6InterfaceContainer::Iterator i;
+            for (i = ueIpIface.Begin(); i != ueIpIface.End(); ++i)
+            {
+                const auto [ipv6, index] = *i;
+                auto ueStaticRouting = ipv6RoutingHelper.GetStaticRouting(ipv6);
+                ueStaticRouting->SetDefaultMulticastRoute(index);
+            }
             slInfo.m_dstL2Id = 224;
             remoteAddress = Inet6SocketAddress(groupAddress6, port);
             // Two senders in this test case
@@ -1347,18 +1326,16 @@ TestSidelinkHarqTwoSenders::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
             transmitDevices.Add(ueNetDevices.Get(0));
             transmitDevices.Add(ueNetDevices.Get(2));
             transmitTft = Create<LteSlTft>(LteSlTft::Direction::TRANSMIT, groupAddress6, slInfo);
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime,
-                                           transmitDevices,
-                                           transmitTft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime,
+                                         transmitDevices,
+                                         transmitTft);
             NetDeviceContainer receiveDevices;
             for (uint32_t u = 0; u < ueContainer.GetN(); ++u)
             {
                 receiveDevices.Add(ueNetDevices.Get(u));
             }
             receiveTft = Create<LteSlTft>(LteSlTft::Direction::RECEIVE, groupAddress6, slInfo);
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime,
-                                           receiveDevices,
-                                           receiveTft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receiveDevices, receiveTft);
         }
         else
         {
@@ -1369,7 +1346,7 @@ TestSidelinkHarqTwoSenders::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
             NetDeviceContainer transmit;
             transmit.Add(ueNetDevices.Get(0));
             transmit.Add(ueNetDevices.Get(2));
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, transmit, transmitTft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, transmit, transmitTft);
             receiveTft =
                 Create<LteSlTft>(LteSlTft::Direction::RECEIVE, ueIpIface.GetAddress(1, 0), slInfo);
             NetDeviceContainer receive;
@@ -1381,7 +1358,7 @@ TestSidelinkHarqTwoSenders::ConfigureTfts(Ptr<NrSlHelper> nrSlHelper,
                     receive.Add(ueNetDevices.Get(u));
                 }
             }
-            nrSlHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receive, receiveTft);
+            nrHelper->ActivateNrSlBearer(finalSlBearersActivationTime, receive, receiveTft);
         }
     }
 }

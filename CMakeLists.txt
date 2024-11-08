@@ -72,7 +72,6 @@ set(source_files
     model/nr-lte-mi-error-model.cc
     model/nr-gnb-mac.cc
     model/nr-ue-mac.cc
-    model/nr-sl-ue-mac.cc
     model/nr-rrc-protocol-ideal.cc
     model/nr-mac-header-vs.cc
     model/nr-mac-header-vs-ul.cc
@@ -126,18 +125,22 @@ set(source_files
     model/nr-sl-bwp-manager-ue.cc
     model/nr-sl-chunk-processor.cc
     model/nr-sl-comm-resource-pool-factory.cc
+    model/nr-sl-harq-phy.cc
     model/nr-sl-interference.cc
     model/nr-sl-mac-pdu-tag.cc
     model/nr-sl-phy-mac-common.cc
     model/nr-sl-sci-f1a-header.cc
     model/nr-sl-sci-f2a-header.cc
     model/nr-sl-sci-f2-header.cc
+    model/nr-sl-spectrum-phy.cc
     model/nr-sl-ue-mac-harq.cc
     model/nr-sl-ue-mac-scheduler.cc
     model/nr-sl-ue-mac-scheduler-dst-info.cc
     model/nr-sl-ue-mac-scheduler-lcg.cc
     model/nr-sl-ue-mac-scheduler-fixed-mcs.cc
+    model/nr-sl-ue-mac.cc
     model/nr-sl-ue-phy-sap.cc
+    model/nr-sl-ue-phy.cc
     utils/distance-based-three-gpp-spectrum-propagation-loss-model.cc
     utils/traffic-generators/helper/traffic-generator-helper.cc
     utils/traffic-generators/model/traffic-generator.cc
@@ -218,7 +221,6 @@ set(header_files
     model/nr-lte-mi-error-model.h
     model/nr-gnb-mac.h
     model/nr-ue-mac.h
-    model/nr-sl-ue-mac.h
     model/nr-rrc-protocol-ideal.h
     model/nr-harq-phy.h
     model/bandwidth-part-gnb.h
@@ -269,18 +271,22 @@ set(header_files
     model/nr-sl-bwp-manager-ue.h
     model/nr-sl-chunk-processor.h
     model/nr-sl-comm-resource-pool-factory.h
+    model/nr-sl-harq-phy.h
     model/nr-sl-interference.h
     model/nr-sl-mac-pdu-tag.h
     model/nr-sl-phy-mac-common.h
     model/nr-sl-sci-f1a-header.h
     model/nr-sl-sci-f2a-header.h
     model/nr-sl-sci-f2-header.h
+    model/nr-sl-spectrum-phy.h
     model/nr-sl-ue-mac-harq.h
     model/nr-sl-ue-mac-scheduler-dst-info.h
     model/nr-sl-ue-mac-scheduler.h
     model/nr-sl-ue-mac-scheduler-lcg.h
     model/nr-sl-ue-mac-scheduler-fixed-mcs.h
+    model/nr-sl-ue-mac.h
     model/nr-sl-ue-phy-sap.h
+    model/nr-sl-ue-phy.h
     utils/distance-based-three-gpp-spectrum-propagation-loss-model.h
     utils/traffic-generators/model/traffic-generator.h
     utils/traffic-generators/model/traffic-generator-ftp-single.h

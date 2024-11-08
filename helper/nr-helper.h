@@ -12,6 +12,7 @@
 #include "nr-bearer-stats-connector.h"
 #include "nr-mac-scheduling-stats.h"
 
+#include <ns3/epc-helper.h>
 #include <ns3/eps-bearer.h>
 #include <ns3/net-device-container.h>
 #include <ns3/node-container.h>
@@ -27,7 +28,6 @@ class NrGnbPhy;
 class SpectrumChannel;
 class NrSpectrumValueHelper;
 class NrGnbMac;
-class EpcHelper;
 class EpcTft;
 class NrBearerStatsCalculator;
 class NrMacRxTrace;
@@ -43,38 +43,44 @@ class BwpManagerUe;
 
 /**
  * \ingroup helper
- * \brief Helper for a correct setup of every NR simulation
- *
- * This class will help you in setting up a single- or multi-cell scenario
- * with NR. Most probably, you will interact with the NR module only through
- * this class, so make sure everything that is written in the following is
- * clear enough to start creating your own scenario.
+ * \brief Helper to set up single- or multi-cell scenarios with NR
  *
  * \section helper_pre Pre-requisite: Node creation and placement
  *
- * We assume that you read the ns-3 tutorials, and you're able to create
- * your own node placement, as well as the mobility model that you prefer
- * for your scenario. For simple cases, we provide a class that can help you
- * in setting up a grid-like scenario. Please take a look at the
- * GridScenarioHelper documentation in that case.
+ * The `NrHelper` installation API accepts an `ns3::NodeContainer`.
+ * Users are advised to create gNB nodes in one or more node containers,
+ * and UE nodes in one or more additional node containers, because the
+ * installation method is different for gNB and UE nodes. Additionally,
+ * any position or mobility models must be installed on the nodes
+ * outside of the NrHelper. For simple cases, we provide helpers that
+ * position nodes on rectangular and hexagonal grids. Please take a look at
+ * the GridScenarioHelper documentation in that case.
  *
  * \section helper_creating Creating the helper
  *
- * Usually, the helper is created on the heap, and have to live till the end
- * of the simulation program:
+ * The NrHelper inherits from `ns3::Object` and therefore should be created
+ * with `CreateObject()`.  The helper should remain in scope until the
+ * simulation program ends.  More than one `NrHelper` can be created.
+ *
+\verbatim
+  Ptr<NrHelper> nrHelper = CreateObject<NrHelper> ();
+\endverbatim
+ *
+ * \section helper_additional Adding additional helpers
+ *
+ * The `NrHelper` accepts two other optional helpers, a beamforming helper
+ * and an Evolved Packet Core (EPC) helper.  Both of these helpers have
+ * different subclasses (the `Ideal` and `Realistic` beamforming helpers,
+ * and several EPC helpers that vary on the basis of backhaul technology.
+ * The following code shows an example of these additional helpers.
  *
 \verbatim
   Ptr<NrPointToPointEpcHelper> epcHelper = CreateObject<NrPointToPointEpcHelper> ();
   Ptr<IdealBeamformingHelper> idealBeamformingHelper = CreateObject<IdealBeamformingHelper>();
-  Ptr<NrHelper> nrHelper = CreateObject<NrHelper> ();
-
   nrHelper->SetBeamformingHelper (idealBeamformingHelper);
   nrHelper->SetEpcHelper (epcHelper);
 \endverbatim
  *
- * As you can see, we have created two other object that can help this class:
- * the IdealBeamformingHelper and the NrPointToPointEpcHelper. Please refer to
- * the documentation of such classes if you need more information about them.
  *
  * \section helper_dividing Dividing the spectrum and creating the channels
  *
@@ -195,7 +201,7 @@ class BwpManagerUe;
  * the control messages transmitted and received from/at the gNB and UE side,
  * the SINR, as well as RLC and PDCP statistics such as the packet size.
  * Please refer to their documentation for more information.
- * Enabling the traces is done by simply adding the method enableTraces() in the
+ * Enabling the traces is done by simply calling the method `EnableTraces()` in the
  * scenario.
  *
  */
@@ -482,6 +488,13 @@ class NrHelper : public Object
     void SetGnbSpectrumAttribute(const std::string& n, const AttributeValue& v);
 
     /**
+     * \brief Set the TypeId of the NrSpectrumPhy to create
+     *
+     * \param tid The TypeId of the NrSpectrumPhy or a subclass
+     */
+    void SetUeSpectrumTypeId(TypeId tid);
+
+    /**
      * \brief Set an attribute for the UE spectrum, before it is created.
      *
      * \param n the name of the attribute
@@ -518,6 +531,13 @@ class NrHelper : public Object
      * \see NrMacSchedulerNs3
      */
     void SetSchedulerAttribute(const std::string& n, const AttributeValue& v);
+
+    /**
+     * \brief Set the TypeId of the NrUePhy to create
+     *
+     * \param tid The TypeId of the NrUePhy or a subclass
+     */
+    void SetUePhyTypeId(TypeId tid);
 
     /**
      * \brief Set an attribute for the UE PHY, before it is created.
@@ -867,7 +887,7 @@ class NrHelper : public Object
      * \param stream first stream index to use
      * \return the number of stream indices (possibly zero) that have been assigned
      */
-    int64_t AssignStreams(NetDeviceContainer c, int64_t stream);
+    virtual int64_t AssignStreams(NetDeviceContainer c, int64_t stream);
 
     /// \brief parameters of the gNB or UE antenna arrays
     struct AntennaParams

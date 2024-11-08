@@ -7,6 +7,8 @@
 #ifndef NR_SL_HELPER_H
 #define NR_SL_HELPER_H
 
+#include "nr-helper.h"
+
 #include <ns3/lte-rrc-sap.h>
 #include <ns3/net-device-container.h>
 #include <ns3/object.h>
@@ -16,11 +18,10 @@ namespace ns3
 
 class NrUeNetDevice;
 class NrAmc;
-class NrPointToPointEpcHelper;
 class LteSlTft;
 class NrSlUeMacScheduler;
 
-class NrSlHelper : public Object
+class NrSlHelper : public NrHelper
 {
   public:
     /**
@@ -79,12 +80,6 @@ class NrSlHelper : public Object
      *
      */
     void SetSlErrorModel(const std::string& errorModelTypeId);
-    /**
-     * \brief Set EPC helper
-     *
-     * \param epcHelper Ptr of type NrPointToPointEpcHelper
-     */
-    void SetEpcHelper(const Ptr<NrPointToPointEpcHelper>& epcHelper);
     /**
      * \brief Schedule the activation of a NR sidelink bearer
      *
@@ -145,7 +140,7 @@ class NrSlHelper : public Object
      * \param stream first stream index to use
      * \return the number of stream indices (possibly zero) that have been assigned
      */
-    int64_t AssignStreams(NetDeviceContainer c, int64_t stream);
+    int64_t AssignStreams(NetDeviceContainer c, int64_t stream) override;
 
   protected:
     /**
@@ -186,9 +181,8 @@ class NrSlHelper : public Object
      */
     Ptr<NrAmc> CreateUeSlAmc() const;
 
-    ObjectFactory m_ueSlAmcFactory;           //!< UE SL AMC Object factory
-    ObjectFactory m_ueSlSchedulerFactory;     //!< UE SL scheduler Object factory
-    Ptr<NrPointToPointEpcHelper> m_epcHelper; //!< the EPC helper
+    ObjectFactory m_ueSlAmcFactory;       //!< UE SL AMC Object factory
+    ObjectFactory m_ueSlSchedulerFactory; //!< UE SL scheduler Object factory
 };
 
 } // namespace ns3
