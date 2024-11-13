@@ -655,8 +655,10 @@ class NrRrcConnectionEstablishmentErrorTestCase : public NrRrcConnectionEstablis
     Ptr<MobilityModel> m_ueMobility; ///< UE mobility model
 };
 
-NrRrcConnectionEstablishmentErrorTestCase::
-NrRrcConnectionEstablishmentErrorTestCase(bool isFdd, Time jumpAwayTime, std::string description)
+NrRrcConnectionEstablishmentErrorTestCase::NrRrcConnectionEstablishmentErrorTestCase(
+    bool isFdd,
+    Time jumpAwayTime,
+    std::string description)
     : NrRrcConnectionEstablishmentTestCase(isFdd, 1, 1, 0, 0, 1, true, false, true, description),
       m_jumpAwayTime(jumpAwayTime)
 {
@@ -826,8 +828,7 @@ class NrRrcTestSuite : public TestSuite
     NrRrcTestSuite();
 };
 
-NrRrcTestSuite::
-NrRrcTestSuite()
+NrRrcTestSuite::NrRrcTestSuite()
     : TestSuite("nr-rrc", Type::SYSTEM)
 {
     //  LogComponentEnableAll (LOG_PREFIX_ALL);
