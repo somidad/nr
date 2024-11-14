@@ -862,7 +862,7 @@ void
 NrUeRrc::DoRecvMasterInformationBlock(uint16_t cellId, NrRrcSap::MasterInformationBlock msg)
 {
     m_dlBandwidth = msg.dlBandwidth;
-    m_cphySapProvider.at(GetPrimaryDlIndex())->SetDlBandwidth(msg.dlBandwidth);
+    m_cphySapProvider.at(GetPrimaryDlIndex())->SetBandwidth(msg.dlBandwidth);
     m_hasReceivedMib = true;
     m_mibReceivedTrace(m_imsi, m_cellId, m_rnti, cellId);
 
@@ -1026,7 +1026,7 @@ NrUeRrc::DoRecvSystemInformation(NrRrcSap::SystemInformation msg)
                     msg.sib2.radioResourceConfigCommon.pdschConfigCommon.referenceSignalPower);
             if (GetPrimaryUlIndex() != GetPrimaryDlIndex())
             {
-                m_cphySapProvider.at(GetPrimaryUlIndex())->SetDlBandwidth(m_ulBandwidth);
+                m_cphySapProvider.at(GetPrimaryUlIndex())->SetBandwidth(m_ulBandwidth);
             }
             if (m_state == IDLE_WAIT_SIB2)
             {
@@ -1109,11 +1109,11 @@ NrUeRrc::DoRecvRrcConnectionReconfiguration(NrRrcSap::RrcConnectionReconfigurati
             m_cphySapProvider.at(GetPrimaryDlIndex())
                 ->SynchronizeWithGnb(m_cellId, mci.carrierFreq.dlCarrierFreq);
             m_cphySapProvider.at(GetPrimaryDlIndex())
-                ->SetDlBandwidth(mci.carrierBandwidth.dlBandwidth);
+                ->SetBandwidth(mci.carrierBandwidth.dlBandwidth);
             if (GetPrimaryUlIndex() != GetPrimaryDlIndex())
             {
                 m_cphySapProvider.at(GetPrimaryUlIndex())
-                    ->SetDlBandwidth(mci.carrierBandwidth.ulBandwidth);
+                    ->SetBandwidth(mci.carrierBandwidth.ulBandwidth);
             }
             m_cphySapProvider.at(GetPrimaryUlIndex())
                 ->ConfigureUplink(mci.carrierFreq.ulCarrierFreq, mci.carrierBandwidth.ulBandwidth);
@@ -1351,7 +1351,7 @@ NrUeRrc::EvaluateCellForSelection()
     {
         m_cellId = cellId;
         m_cphySapProvider.at(GetPrimaryDlIndex())->SynchronizeWithGnb(cellId, m_dlEarfcn);
-        m_cphySapProvider.at(GetPrimaryDlIndex())->SetDlBandwidth(m_dlBandwidth);
+        m_cphySapProvider.at(GetPrimaryDlIndex())->SetBandwidth(m_dlBandwidth);
         m_initialCellSelectionEndOkTrace(m_imsi, cellId);
         // Once the UE is connected, m_connectionPending is
         // set to false. So, when RLF occurs and UE performs
@@ -1423,7 +1423,7 @@ NrUeRrc::ApplyRadioResourceConfigDedicatedSecondaryCarrier(
                                 .soundingRsUlConfigDedicated.srsConfigIndex;
 
         m_cphySapProvider.at(ccId)->SynchronizeWithGnb(physCellId, dlEarfcn);
-        m_cphySapProvider.at(ccId)->SetDlBandwidth(dlBand);
+        m_cphySapProvider.at(ccId)->SetBandwidth(dlBand);
         m_cphySapProvider.at(ccId)->ConfigureUplink(ulEarfcn, ulBand);
         m_cphySapProvider.at(ccId)->ConfigureReferenceSignalPower(
             scell.radioResourceConfigCommonSCell.nonUlConfiguration.pdschConfigCommon
@@ -1928,7 +1928,7 @@ NrUeRrc::SaveUeMeasurements(uint16_t cellId,
         MeasValues v;
         v.rsrp = rsrp;
         v.rsrq = rsrq;
-        v.carrierFreq = m_cphySapProvider.at(componentCarrierId)->GetDlEarfcn();
+        v.carrierFreq = m_cphySapProvider.at(componentCarrierId)->GetEarfcn();
 
         std::pair<uint16_t, MeasValues> val(cellId, v);
         auto ret = m_storedMeasValues.insert(val);
@@ -1985,7 +1985,7 @@ NrUeRrc::MeasurementReportTriggering(uint8_t measId)
     uint16_t servingCellId = 0;
     for (auto cphySapProvider : m_cphySapProvider)
     {
-        if (cphySapProvider->GetDlEarfcn() == measObjectEutra.carrierFreq)
+        if (cphySapProvider->GetEarfcn() == measObjectEutra.carrierFreq)
         {
             servingCellId = cphySapProvider->GetCellId();
         }

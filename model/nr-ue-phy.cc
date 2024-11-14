@@ -1528,7 +1528,7 @@ NrUePhy::DoSetInitialBandwidth()
                         << (unsigned)NrSpectrumValueHelper::SUBCARRIERS_PER_RB
                         << "\n m_rbOh = " << GetRbOverhead());
 
-    DoSetDlBandwidth(initialBandwidthWithOverhead);
+    DoSetBandwidth(initialBandwidthWithOverhead);
 }
 
 uint16_t
@@ -1549,7 +1549,7 @@ NrUePhy::DoGetDlEarfcn()
 }
 
 void
-NrUePhy::DoSetDlBandwidth(uint16_t dlBandwidth)
+NrUePhy::DoSetBandwidth(uint16_t dlBandwidth)
 {
     NS_LOG_FUNCTION(this << +dlBandwidth);
 
@@ -1576,6 +1576,7 @@ NrUePhy::DoConfigureUplink(uint16_t ulEarfcn, uint8_t ulBandwidth)
     NS_LOG_FUNCTION(this << ulEarfcn << +ulBandwidth);
     // Ignore this; should be equal to dlBandwidth
     m_ulConfigured = true;
+    DoSetBandwidth(ulBandwidth);
 }
 
 void

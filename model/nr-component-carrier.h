@@ -35,46 +35,25 @@ class NrComponentCarrier : public Object
 
     ~NrComponentCarrier() override;
     void DoDispose() override;
+    /**
+     * \return the bandwidth in RBs
+     */
+    uint16_t GetBandwidth() const;
 
     /**
-     * \return the uplink bandwidth in RBs
+     * \param bw the bandwidth in RBs
      */
-    uint16_t GetUlBandwidth() const;
+    virtual void SetBandwidth(uint16_t bw);
 
     /**
-     * \param bw the uplink bandwidth in RBs
+     * \return the carrier frequency (EARFCN)
      */
-    virtual void SetUlBandwidth(uint16_t bw);
+    uint32_t GetEarfcn() const;
 
     /**
-     * \return the downlink bandwidth in RBs
+     * \param earfcn the carrier frequency (EARFCN)
      */
-    uint16_t GetDlBandwidth() const;
-
-    /**
-     * \param bw the downlink bandwidth in RBs
-     */
-    virtual void SetDlBandwidth(uint16_t bw);
-
-    /**
-     * \return the downlink carrier frequency (EARFCN)
-     */
-    uint32_t GetDlEarfcn() const;
-
-    /**
-     * \param earfcn the downlink carrier frequency (EARFCN)
-     */
-    void SetDlEarfcn(uint32_t earfcn);
-
-    /**
-     * \return the uplink carrier frequency (EARFCN)
-     */
-    uint32_t GetUlEarfcn() const;
-
-    /**
-     * \param earfcn the uplink carrier frequency (EARFCN)
-     */
-    void SetUlEarfcn(uint32_t earfcn);
+    virtual void SetEarfcn(uint32_t earfcn);
 
     /**
      * \brief Returns the CSG ID of the eNodeB.
@@ -134,16 +113,11 @@ class NrComponentCarrier : public Object
     bool IsPrimary() const;
 
   protected:
-    uint32_t m_csgId{0};         ///< CSG ID
-    bool m_csgIndication{false}; ///< CSG indication
-
+    uint32_t m_csgId{0};          ///< CSG ID
+    bool m_csgIndication{false};  ///< CSG indication
     bool m_primaryCarrier{false}; ///< whether the carrier is primary
-
-    uint16_t m_dlBandwidth{0}; ///< downlink bandwidth in RBs */
-    uint16_t m_ulBandwidth{0}; ///< uplink bandwidth in RBs */
-
-    uint32_t m_dlEarfcn{0}; ///< downlink carrier frequency */
-    uint32_t m_ulEarfcn{0}; ///< uplink carrier frequency */
+    uint16_t m_bandwidth{0};      ///< bandwidth in RBs */
+    uint32_t m_earfcn{0};         ///< carrier frequency */
 };
 
 } // namespace ns3

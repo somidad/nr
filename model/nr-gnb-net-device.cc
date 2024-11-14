@@ -213,7 +213,7 @@ uint16_t
 NrGnbNetDevice::GetEarfcn(uint8_t index) const
 {
     NS_LOG_FUNCTION(this);
-    return m_ccMap.at(index)->GetDlEarfcn(); // Ul or Dl doesn't matter, they are the same
+    return m_ccMap.at(index)->GetEarfcn(); // Ul or Dl doesn't matter, they are the same
 }
 
 void
@@ -270,7 +270,7 @@ NrGnbNetDevice::GetCellIdDlBandwidth(uint16_t cellId) const
         {
             if (cc->GetCellId() == cellId)
             {
-                return cc->GetDlBandwidth();
+                return cc->GetBandwidth();
             }
         }
     }
@@ -287,7 +287,7 @@ NrGnbNetDevice::GetCellIdUlBandwidth(uint16_t cellId) const
         {
             if (cc->GetCellId() == cellId)
             {
-                return cc->GetUlBandwidth();
+                return cc->GetBandwidth();
             }
         }
     }
@@ -304,7 +304,7 @@ NrGnbNetDevice::GetCellIdDlEarfcn(uint16_t cellId) const
         {
             if (cc->GetCellId() == cellId)
             {
-                return cc->GetDlEarfcn();
+                return cc->GetEarfcn();
             }
         }
     }
@@ -321,7 +321,7 @@ NrGnbNetDevice::GetCellIdUlEarfcn(uint16_t cellId) const
         {
             if (cc->GetCellId() == cellId)
             {
-                return cc->GetUlEarfcn();
+                return cc->GetEarfcn();
             }
         }
     }

@@ -447,10 +447,8 @@ NrHelper::InstallSingleUeDevice(
         double bwInKhz = allBwps[bwpId].get()->m_channelBandwidth / 1000.0;
         NS_ABORT_MSG_IF(bwInKhz / 100.0 > 65535.0,
                         "A bandwidth of " << bwInKhz / 100.0 << " kHz cannot be represented");
-        cc->SetUlBandwidth(static_cast<uint16_t>(bwInKhz / 100));
-        cc->SetDlBandwidth(static_cast<uint16_t>(bwInKhz / 100));
-        cc->SetDlEarfcn(0); // Used for nothing..
-        cc->SetUlEarfcn(0); // Used for nothing..
+        cc->SetBandwidth(static_cast<uint16_t>(bwInKhz / 100));
+        cc->SetEarfcn(0); // Used for nothing..
 
         auto mac = CreateUeMac();
         cc->SetMac(mac);
@@ -724,10 +722,8 @@ NrHelper::InstallSingleGnbDevice(
         NS_ABORT_MSG_IF(bwInKhz / 100.0 > 65535.0,
                         "A bandwidth of " << bwInKhz / 100.0 << " kHz cannot be represented");
 
-        cc->SetUlBandwidth(static_cast<uint16_t>(bwInKhz / 100));
-        cc->SetDlBandwidth(static_cast<uint16_t>(bwInKhz / 100));
-        cc->SetDlEarfcn(0);              // Argh... handover not working
-        cc->SetUlEarfcn(0);              // Argh... handover not working
+        cc->SetBandwidth(static_cast<uint16_t>(bwInKhz / 100));
+        cc->SetEarfcn(0);                // Argh... handover not working
         cc->SetCellId(cellId);           // All CCs have the same cellId
         cc->SetCsgId(m_cellIdCounter++); // CSG IDs starts matching cellId, then gets incremented
 
