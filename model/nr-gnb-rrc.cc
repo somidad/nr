@@ -734,12 +734,12 @@ NrUeManager::PrepareHandover(uint16_t cellId)
 
             NrRrcSap::HandoverPreparationInfo hpi;
             hpi.asConfig.sourceUeIdentity = m_rnti;
-            hpi.asConfig.sourceDlCarrierFreq = sourceComponentCarrier->GetDlEarfcn();
+            hpi.asConfig.sourceDlCarrierFreq = sourceComponentCarrier->GetEarfcn();
             hpi.asConfig.sourceMeasConfig = m_rrc->m_ueMeasConfig;
             hpi.asConfig.sourceRadioResourceConfig =
                 GetRadioResourceConfigForHandoverPreparationInfo();
             hpi.asConfig.sourceMasterInformationBlock.dlBandwidth =
-                sourceComponentCarrier->GetDlBandwidth();
+                sourceComponentCarrier->GetBandwidth();
             hpi.asConfig.sourceMasterInformationBlock.systemFrameNumber = 0;
             hpi.asConfig.sourceSystemInformationBlockType1.cellAccessRelatedInfo.plmnIdentityInfo
                 .plmnIdentity = m_rrc->m_sib1.at(m_componentCarrierId)
@@ -761,9 +761,9 @@ NrUeManager::PrepareHandover(uint16_t cellId)
             hpi.asConfig.sourceSystemInformationBlockType2.radioResourceConfigCommon
                 .rachConfigCommon.txFailParam.connEstFailCount = rc.connEstFailCount;
             hpi.asConfig.sourceSystemInformationBlockType2.freqInfo.ulCarrierFreq =
-                sourceComponentCarrier->GetUlEarfcn();
+                sourceComponentCarrier->GetEarfcn();
             hpi.asConfig.sourceSystemInformationBlockType2.freqInfo.ulBandwidth =
-                sourceComponentCarrier->GetUlBandwidth();
+                sourceComponentCarrier->GetBandwidth();
             params.rrcContext = m_rrc->m_rrcSapUser->EncodeHandoverPreparationInformation(hpi);
 
             NS_LOG_LOGIC("oldGnbUeX2apId = " << params.oldGnbUeX2apId);
@@ -872,13 +872,13 @@ NrUeManager::GetRrcConnectionReconfigurationForHandover(uint8_t componentCarrier
     result.haveMobilityControlInfo = true;
     result.mobilityControlInfo.targetPhysCellId = targetComponentCarrier->GetCellId();
     result.mobilityControlInfo.haveCarrierFreq = true;
-    result.mobilityControlInfo.carrierFreq.dlCarrierFreq = targetComponentCarrier->GetDlEarfcn();
-    result.mobilityControlInfo.carrierFreq.ulCarrierFreq = targetComponentCarrier->GetUlEarfcn();
+    result.mobilityControlInfo.carrierFreq.dlCarrierFreq = targetComponentCarrier->GetEarfcn();
+    result.mobilityControlInfo.carrierFreq.ulCarrierFreq = targetComponentCarrier->GetEarfcn();
     result.mobilityControlInfo.haveCarrierBandwidth = true;
     result.mobilityControlInfo.carrierBandwidth.dlBandwidth =
-        targetComponentCarrier->GetDlBandwidth();
+        targetComponentCarrier->GetBandwidth();
     result.mobilityControlInfo.carrierBandwidth.ulBandwidth =
-        targetComponentCarrier->GetUlBandwidth();
+        targetComponentCarrier->GetBandwidth();
 
     if (m_caSupportConfigured && m_rrc->m_numberOfComponentCarriers > 1)
     {
@@ -1733,10 +1733,10 @@ NrUeManager::BuildNonCriticalExtensionConfigurationCa()
         NrRrcSap::SCellToAddMod component;
         component.sCellIndex = ccId;
         component.cellIdentification.physCellId = eNbCcm->GetCellId();
-        component.cellIdentification.dlCarrierFreq = eNbCcm->GetDlEarfcn();
+        component.cellIdentification.dlCarrierFreq = eNbCcm->GetEarfcn();
         component.radioResourceConfigCommonSCell.haveNonUlConfiguration = true;
         component.radioResourceConfigCommonSCell.nonUlConfiguration.dlBandwidth =
-            eNbCcm->GetDlBandwidth();
+            eNbCcm->GetBandwidth();
         component.radioResourceConfigCommonSCell.nonUlConfiguration.antennaInfoCommon
             .antennaPortsCount = 0;
         component.radioResourceConfigCommonSCell.nonUlConfiguration.pdschConfigCommon
@@ -1744,9 +1744,9 @@ NrUeManager::BuildNonCriticalExtensionConfigurationCa()
         component.radioResourceConfigCommonSCell.nonUlConfiguration.pdschConfigCommon.pb = 0;
         component.radioResourceConfigCommonSCell.haveUlConfiguration = true;
         component.radioResourceConfigCommonSCell.ulConfiguration.ulFreqInfo.ulCarrierFreq =
-            eNbCcm->GetUlEarfcn();
+            eNbCcm->GetEarfcn();
         component.radioResourceConfigCommonSCell.ulConfiguration.ulFreqInfo.ulBandwidth =
-            eNbCcm->GetUlBandwidth();
+            eNbCcm->GetBandwidth();
         component.radioResourceConfigCommonSCell.ulConfiguration.ulPowerControlCommonSCell.alpha =
             0;
         // component.radioResourceConfigCommonSCell.ulConfiguration.soundingRsUlConfigCommon.type =
@@ -2367,22 +2367,21 @@ NrGnbRrc::ConfigureCell(std::map<uint8_t, Ptr<BandwidthPartGnb>> ccPhyConf)
 {
     auto it = ccPhyConf.begin();
     NS_ASSERT(it != ccPhyConf.end());
-    uint16_t ulBandwidth = it->second->GetUlBandwidth();
-    uint16_t dlBandwidth = it->second->GetDlBandwidth();
-    uint32_t ulEarfcn = it->second->GetUlEarfcn();
-    uint32_t dlEarfcn = it->second->GetDlEarfcn();
+    uint16_t ulBandwidth = it->second->GetBandwidth();
+    uint16_t dlBandwidth = it->second->GetBandwidth();
+    uint32_t ulEarfcn = it->second->GetEarfcn();
+    uint32_t dlEarfcn = it->second->GetEarfcn();
     NS_LOG_FUNCTION(this << ulBandwidth << dlBandwidth << ulEarfcn << dlEarfcn);
     NS_ASSERT(!m_configured);
 
     for (const auto& it : ccPhyConf)
     {
-        m_cphySapProvider.at(it.first)->SetBandwidth(it.second->GetUlBandwidth(),
-                                                     it.second->GetDlBandwidth());
-        m_cphySapProvider.at(it.first)->SetEarfcn(it.second->GetUlEarfcn(),
-                                                  it.second->GetDlEarfcn());
+        m_cphySapProvider.at(it.first)->SetBandwidth(it.second->GetBandwidth(),
+                                                     it.second->GetBandwidth());
+        m_cphySapProvider.at(it.first)->SetEarfcn(it.second->GetEarfcn(), it.second->GetEarfcn());
         m_cphySapProvider.at(it.first)->SetCellId(it.second->GetCellId());
-        m_cmacSapProvider.at(it.first)->ConfigureMac(it.second->GetUlBandwidth(),
-                                                     it.second->GetDlBandwidth());
+        m_cmacSapProvider.at(it.first)->ConfigureMac(it.second->GetBandwidth(),
+                                                     it.second->GetBandwidth());
     }
 
     m_dlEarfcn = dlEarfcn;
@@ -2399,8 +2398,8 @@ NrGnbRrc::ConfigureCell(std::map<uint8_t, Ptr<BandwidthPartGnb>> ccPhyConf)
     {
         NrRrcSap::MeasObjectToAddMod measObject;
         measObject.measObjectId = it.first + 1;
-        measObject.measObjectEutra.carrierFreq = it.second->GetDlEarfcn();
-        measObject.measObjectEutra.allowedMeasBandwidth = it.second->GetDlBandwidth();
+        measObject.measObjectEutra.carrierFreq = it.second->GetEarfcn();
+        measObject.measObjectEutra.allowedMeasBandwidth = it.second->GetBandwidth();
         measObject.measObjectEutra.presenceAntennaPort1 = false;
         measObject.measObjectEutra.neighCellConfig = 0;
         measObject.measObjectEutra.offsetFreq = 0;
@@ -2422,7 +2421,7 @@ NrGnbRrc::ConfigureCell(std::map<uint8_t, Ptr<BandwidthPartGnb>> ccPhyConf)
     {
         // Enabling MIB transmission
         NrRrcSap::MasterInformationBlock mib;
-        mib.dlBandwidth = it.second->GetDlBandwidth();
+        mib.dlBandwidth = it.second->GetBandwidth();
         mib.systemFrameNumber = 0;
         m_cphySapProvider.at(it.first)->SetMasterInformationBlock(mib);
 
@@ -3392,8 +3391,8 @@ NrGnbRrc::SendSystemInformation()
 
         NrRrcSap::SystemInformation si;
         si.haveSib2 = true;
-        si.sib2.freqInfo.ulCarrierFreq = it.second->GetUlEarfcn();
-        si.sib2.freqInfo.ulBandwidth = it.second->GetUlBandwidth();
+        si.sib2.freqInfo.ulCarrierFreq = it.second->GetEarfcn();
+        si.sib2.freqInfo.ulBandwidth = it.second->GetBandwidth();
         si.sib2.radioResourceConfigCommon.pdschConfigCommon.referenceSignalPower =
             m_cphySapProvider.at(ccId)->GetReferenceSignalPower();
         si.sib2.radioResourceConfigCommon.pdschConfigCommon.pb = 0;

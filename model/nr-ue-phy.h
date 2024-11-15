@@ -685,9 +685,8 @@ class NrUePhy : public NrPhy
     uint32_t DoGetDlEarfcn();
     /**
      * \brief Function that is called by RRC SAP.
-     * TODO This function and its name can be updated once NR RRC SAP is implemented
      */
-    void DoSetDlBandwidth(uint16_t ulBandwidth);
+    void DoSetBandwidth(uint16_t Bandwidth);
     /**
      * \brief Function that is called by RRC SAP.
      * TODO This function and its name can be updated once NR RRC SAP is implemented

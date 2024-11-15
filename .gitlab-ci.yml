@@ -19,8 +19,8 @@ workflow:
     - if: $CI_COMMIT_BRANCH
 
 variables:
-  NS3_RELEASE_VERSION: ns-3.42
-  NS3_REPOSITORY_URL: https://gitlab.com/nsnam/ns-3-dev
+  NS3_RELEASE_VERSION: FixThreeGppPropLossModelDisposalOrder
+  NS3_REPOSITORY_URL: https://gitlab.com/gabrielcarvfer/ns-3-dev
 
 ###################### BUILD STAGE #############################################
 

@@ -68,14 +68,9 @@ class BandwidthPartGnb : public NrComponentCarrier
      */
     void SetNrMacScheduler(Ptr<NrMacScheduler> s);
 
-    void SetDlBandwidth(uint16_t bw) override
+    void SetBandwidth(uint16_t bw) override
     {
-        m_dlBandwidth = bw;
-    }
-
-    void SetUlBandwidth(uint16_t bw) override
-    {
-        m_ulBandwidth = bw;
+        m_bandwidth = bw;
     }
 
     /**

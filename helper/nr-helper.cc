@@ -447,10 +447,8 @@ NrHelper::InstallSingleUeDevice(
         double bwInKhz = allBwps[bwpId].get()->m_channelBandwidth / 1000.0;
         NS_ABORT_MSG_IF(bwInKhz / 100.0 > 65535.0,
                         "A bandwidth of " << bwInKhz / 100.0 << " kHz cannot be represented");
-        cc->SetUlBandwidth(static_cast<uint16_t>(bwInKhz / 100));
-        cc->SetDlBandwidth(static_cast<uint16_t>(bwInKhz / 100));
-        cc->SetDlEarfcn(0); // Used for nothing..
-        cc->SetUlEarfcn(0); // Used for nothing..
+        cc->SetBandwidth(static_cast<uint16_t>(bwInKhz / 100));
+        cc->SetEarfcn(0); // Used for nothing..
 
         auto mac = CreateUeMac();
         cc->SetMac(mac);
@@ -482,7 +480,14 @@ NrHelper::InstallSingleUeDevice(
     DynamicCast<BwpManagerUe>(ccmUe)->SetBwpManagerAlgorithm(
         m_ueBwpManagerAlgoFactory.Create<BwpManagerAlgorithm>());
 
+    UintegerValue primaryUlIndex;
+    dev->GetAttribute("PrimaryUlIndex", primaryUlIndex);
+    NS_ASSERT_MSG(primaryUlIndex.Get() < ueCcMap.size(),
+                  "UL primary index out of bounds. Configure PrimaryUlIndex attribute of "
+                  "NrUeNetDevice correctly.");
+
     Ptr<NrUeRrc> rrc = CreateObject<NrUeRrc>();
+    rrc->SetPrimaryUlIndex(primaryUlIndex.Get());
     rrc->m_numberOfComponentCarriers = ueCcMap.size();
     // run InitializeSap to create the proper number of sap provider/users
     rrc->InitializeSap();
@@ -694,8 +699,7 @@ NrHelper::InstallSingleGnbDevice(
     Ptr<NrGnbNetDevice> dev = m_gnbNetDeviceFactory.Create<NrGnbNetDevice>();
 
     NS_LOG_DEBUG("Creating gNB, cellId = " << m_cellIdCounter);
-    uint16_t cellId = m_cellIdCounter;
-    m_cellIdCounter += allBwps.empty(); // Avoid two gNBs with duplicated cellId
+    uint16_t cellId = m_cellIdCounter++; // New cellId
     dev->SetCellId(cellId);
     dev->SetNode(n);
 
@@ -718,12 +722,10 @@ NrHelper::InstallSingleGnbDevice(
         NS_ABORT_MSG_IF(bwInKhz / 100.0 > 65535.0,
                         "A bandwidth of " << bwInKhz / 100.0 << " kHz cannot be represented");
 
-        cc->SetUlBandwidth(static_cast<uint16_t>(bwInKhz / 100));
-        cc->SetDlBandwidth(static_cast<uint16_t>(bwInKhz / 100));
-        cc->SetDlEarfcn(0);             // Argh... handover not working
-        cc->SetUlEarfcn(0);             // Argh... handover not working
-        cc->SetCellId(m_cellIdCounter); // First CC of a gNB matches its cellId
-        m_cellIdCounter++;              // Other CCs are sequential
+        cc->SetBandwidth(static_cast<uint16_t>(bwInKhz / 100));
+        cc->SetEarfcn(0);                // Argh... handover not working
+        cc->SetCellId(cellId);           // All CCs have the same cellId
+        cc->SetCsgId(m_cellIdCounter++); // CSG IDs starts matching cellId, then gets incremented
 
         auto phy = CreateGnbPhy(
             n,

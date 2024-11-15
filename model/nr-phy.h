@@ -409,7 +409,7 @@ class NrPhy : public Object
 
     /**
      * \brief Function to set the channel bandwidth, used also by child classes, i.e.,
-     * see functions DoSetDlBanwidth in NrUePhy and DoSetBandwidth in NrGnbPhy.
+     * see functions DoSetBandwidth in NrUePhy and DoSetBandwidth in NrGnbPhy.
      * This function is also called by NrHelper when creating gNB and UE devices.
      * See CreateGnbPhy and CreateUePhy in NrHelper.
      * This function updates the number of RBs and thus the spectrum model, i.e.,
