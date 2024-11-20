@@ -18,13 +18,13 @@ class NrAmc;
  * \ingroup scheduler
  * \brief CQI management for schedulers.
  *
- * The scheduler will call either DlWBCQIReported or DlSBCQIReported to calculate
- * a new DL MCS. For UL, only the method UlSBCQIReported is implemented,
+ * The scheduler will call DlCQIReported to calculate
+ * a new DL MCS. For UL, only the method UlCQIReported is implemented,
  * and it is a bit more complicated. For any detail, check the respective
  * documentation.
  *
- * \see UlSBCQIReported
- * \see DlWBCQIReported
+ * \see UlCQIReported
+ * \see DlCQIReported
  */
 class NrMacSchedulerCQIManagement
 {
@@ -65,7 +65,7 @@ class NrMacSchedulerCQIManagement
     void InstallGetNrAmcUlFn(const std::function<Ptr<const NrAmc>()>& fn);
 
     /**
-     * \brief A wideband CQI has been reported for the specified UE
+     * \brief A wideband and subband CQI has been reported for the specified UE
      * \param info WB CQI
      * \param ueInfo UE
      * \param expirationTime expiration time of the CQI in number of slot
@@ -76,22 +76,13 @@ class NrMacSchedulerCQIManagement
      * contained in the structure CqiInfo, so no need to make calculation
      * here.
      */
-    void DlWBCQIReported(const DlCqiInfo& info,
+    void DlCQIReported(const DlCqiInfo& info,
                          const std::shared_ptr<NrMacSchedulerUeInfo>& ueInfo,
                          uint32_t expirationTime,
                          int8_t maxDlMcs) const;
-    /**
-     * \brief SB CQI reported
-     * \param info SB CQI
-     * \param ueInfo UE
-     *
-     * NOT IMPLEMENTED
-     */
-    void DlSBCQIReported(const DlCqiInfo& info,
-                         const std::shared_ptr<NrMacSchedulerUeInfo>& ueInfo) const;
 
     /**
-     * \brief An UL SB CQI has been reported for the specified UE
+     * \brief An UL widband and sideband CQI has been reported for the specified UE
      * \param expirationTime expiration time (in slot) of the CQI value
      * \param tbs TBS of the allocation
      * \param params parameters of the received CQI
@@ -110,7 +101,7 @@ class NrMacSchedulerCQIManagement
      * function, we have as a result an updated value of CQI, as well as an updated
      * version of MCS for the UL.
      */
-    void UlSBCQIReported(uint32_t expirationTime,
+    void UlCQIReported(uint32_t expirationTime,
                          uint32_t tbs,
                          const NrMacSchedSapProvider::SchedUlCqiInfoReqParameters& params,
                          const std::shared_ptr<NrMacSchedulerUeInfo>& ueInfo,

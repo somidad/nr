@@ -892,15 +892,7 @@ NrMacSchedulerNs3::DoSchedDlCqiInfoReq(
     {
         NS_ASSERT(m_ueMap.find(cqi.m_rnti) != m_ueMap.end());
         const std::shared_ptr<NrMacSchedulerUeInfo>& ue = m_ueMap.find(cqi.m_rnti)->second;
-
-        if (cqi.m_cqiType == DlCqiInfo::WB)
-        {
-            m_cqiManagement.DlWBCQIReported(cqi, ue, expirationTime, m_maxDlMcs);
-        }
-        else
-        {
-            m_cqiManagement.DlSBCQIReported(cqi, ue);
-        }
+        m_cqiManagement.DlCQIReported(cqi, ue, expirationTime, m_maxDlMcs);
     }
 }
 
@@ -915,7 +907,6 @@ NrMacSchedulerNs3::DoSchedDlCqiInfoReq(
  * to be able to calculate CQI and MCS, so a special stack is maintained
  * (m_ulAllocationMap).
  *
- * Only UlCqiInfo::PUSCH is currently supported.
  */
 void
 NrMacSchedulerNs3::DoSchedUlCqiInfoReq(
@@ -934,58 +925,50 @@ NrMacSchedulerNs3::DoSchedUlCqiInfoReq(
         static_cast<uint32_t>(m_cqiTimersThreshold.GetNanoSeconds() /
                               m_macSchedSapUser->GetSlotPeriod().GetNanoSeconds());
 
-    switch (params.m_ulCqi.m_type)
+    [[maybe_unused]] bool found = false;
+    uint8_t symStart = params.m_symStart;
+    SfnSf ulSfnSf = params.m_sfnSf;
+
+    NS_LOG_INFO("CQI for allocation: " << params.m_sfnSf << " started at sym: " << +symStart
+                                       << " modified allocation " << ulSfnSf << " sym Start "
+                                       << static_cast<uint32_t>(symStart));
+
+    auto itAlloc = m_ulAllocationMap.find(ulSfnSf.GetEncoding());
+    NS_ASSERT_MSG(itAlloc != m_ulAllocationMap.end(), "Can't find allocation for " << ulSfnSf);
+    std::vector<AllocElem>& ulAllocations = itAlloc->second.m_ulAllocations;
+
+    for (auto it = ulAllocations.cbegin(); it != ulAllocations.cend(); /* NO INC */)
     {
-    case UlCqiInfo::PUSCH: {
-        [[maybe_unused]] bool found = false;
-        uint8_t symStart = params.m_symStart;
-        SfnSf ulSfnSf = params.m_sfnSf;
-
-        NS_LOG_INFO("CQI for allocation: " << params.m_sfnSf << " started at sym: " << +symStart
-                                           << " modified allocation " << ulSfnSf << " sym Start "
-                                           << static_cast<uint32_t>(symStart));
-
-        auto itAlloc = m_ulAllocationMap.find(ulSfnSf.GetEncoding());
-        NS_ASSERT_MSG(itAlloc != m_ulAllocationMap.end(), "Can't find allocation for " << ulSfnSf);
-        std::vector<AllocElem>& ulAllocations = itAlloc->second.m_ulAllocations;
-
-        for (auto it = ulAllocations.cbegin(); it != ulAllocations.cend(); /* NO INC */)
+        const AllocElem& allocation = *(it);
+        if (allocation.m_symStart == symStart)
         {
-            const AllocElem& allocation = *(it);
-            if (allocation.m_symStart == symStart)
-            {
-                auto itUe = m_ueMap.find(allocation.m_rnti);
-                NS_ASSERT(itUe != m_ueMap.end());
-                NS_ASSERT(allocation.m_numSym > 0);
-                NS_ASSERT(allocation.m_tbs > 0);
+            auto itUe = m_ueMap.find(allocation.m_rnti);
+            NS_ASSERT(itUe != m_ueMap.end());
+            NS_ASSERT(allocation.m_numSym > 0);
+            NS_ASSERT(allocation.m_tbs > 0);
 
-                m_cqiManagement.UlSBCQIReported(expirationTime,
-                                                allocation.m_tbs,
-                                                params,
-                                                UeInfoOf(*itUe),
-                                                allocation.m_rbgMask,
-                                                m_macSchedSapUser->GetNumRbPerRbg(),
-                                                m_macSchedSapUser->GetSpectrumModel());
-                found = true;
-                it = ulAllocations.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
+            m_cqiManagement.UlCQIReported(expirationTime,
+                                          allocation.m_tbs,
+                                          params,
+                                          UeInfoOf(*itUe),
+                                          allocation.m_rbgMask,
+                                          m_macSchedSapUser->GetNumRbPerRbg(),
+                                          m_macSchedSapUser->GetSpectrumModel());
+            found = true;
+            it = ulAllocations.erase(it);
         }
-        NS_ASSERT(found);
-
-        if (ulAllocations.empty())
+        else
         {
-            // remove obsolete info on allocation; we already processed all the CQI
-            NS_LOG_INFO("Removing allocation for " << ulSfnSf);
-            m_ulAllocationMap.erase(itAlloc);
+            ++it;
         }
     }
-    break;
-    default:
-        NS_FATAL_ERROR("Unknown type of UL-CQI");
+    NS_ASSERT(found);
+
+    if (ulAllocations.empty())
+    {
+        // remove obsolete info on allocation; we already processed all the CQI
+        NS_LOG_INFO("Removing allocation for " << ulSfnSf);
+        m_ulAllocationMap.erase(itAlloc);
     }
 }
 

@@ -355,11 +355,6 @@ struct DlCqiInfo
     uint8_t m_ri{0}; //!< the rank indicator, or simply the rank number
 
     // TODO: use NrMacSchedulerUeInfo::CqiInfo
-    enum DlCqiType
-    {
-        WB,
-        SB
-    } m_cqiType{WB}; //!< The type of the CQI
 
     uint8_t m_wbCqi{0}; //!< Wideband CQI
     size_t m_wbPmi{0};  //!< Wideband precoding matrix index
@@ -384,9 +379,6 @@ struct PmCqiInfo
     std::vector<size_t> m_sbPmis;  //!< Subband PMI values (i2, indices of W2 matrices)
     Ptr<const ComplexMatrixArray> m_optPrecMat{}; ///< Precoding matrix for each RB
 
-    // TODO: Fix/remove empty DlSBCQIReported, then change default type to SB.
-
-    DlCqiInfo::DlCqiType m_cqiType{DlCqiInfo::WB}; ///< CQI type (WB or SB)
     size_t m_tbSize{}; //!< Expected TB size when allocating all resources
 };
 
@@ -398,15 +390,6 @@ struct UlCqiInfo
 {
     // std::vector <uint16_t> m_sinr;
     std::vector<double> m_sinr;
-
-    enum UlCqiType
-    {
-        SRS,
-        PUSCH,
-        PUCCH_1,
-        PUCCH_2,
-        PRACH
-    } m_type;
 };
 
 /**

@@ -19,18 +19,9 @@ namespace ns3
 
 NS_LOG_COMPONENT_DEFINE("NrMacSchedulerCQIManagement");
 
-void
-NrMacSchedulerCQIManagement::DlSBCQIReported(
-    [[maybe_unused]] const DlCqiInfo& info,
-    [[maybe_unused]] const std::shared_ptr<NrMacSchedulerUeInfo>& ueInfo) const
-{
-    NS_LOG_FUNCTION(this);
-    // TODO
-    NS_ABORT_MSG("SB CQI Type is not supported");
-}
 
 void
-NrMacSchedulerCQIManagement::UlSBCQIReported(
+NrMacSchedulerCQIManagement::UlCQIReported(
     uint32_t expirationTime,
     [[maybe_unused]] uint32_t tbs,
     const NrMacSchedSapProvider::SchedUlCqiInfoReqParameters& params,
@@ -45,7 +36,6 @@ NrMacSchedulerCQIManagement::UlSBCQIReported(
     NS_LOG_INFO("Computing SB CQI for UE " << ueInfo->m_rnti);
 
     ueInfo->m_ulCqi.m_sinr = params.m_ulCqi.m_sinr;
-    ueInfo->m_ulCqi.m_cqiType = NrMacSchedulerUeInfo::CqiInfo::SB;
     ueInfo->m_ulCqi.m_timer = expirationTime;
 
     std::vector<int> rbAssignment(params.m_ulCqi.m_sinr.size(), 0);
@@ -133,14 +123,13 @@ NrMacSchedulerCQIManagement::InstallGetNrAmcUlFn(const std::function<Ptr<const N
 }
 
 void
-NrMacSchedulerCQIManagement::DlWBCQIReported(const DlCqiInfo& info,
+NrMacSchedulerCQIManagement::DlCQIReported(const DlCqiInfo& info,
                                              const std::shared_ptr<NrMacSchedulerUeInfo>& ueInfo,
                                              uint32_t expirationTime,
                                              int8_t maxDlMcs) const
 {
     NS_LOG_FUNCTION(this);
 
-    ueInfo->m_dlCqi.m_cqiType = NrMacSchedulerUeInfo::CqiInfo::WB;
     ueInfo->m_dlCqi.m_wbCqi = info.m_wbCqi;
     ueInfo->m_dlCqi.m_timer = expirationTime;
     ueInfo->m_dlCqi.m_wbCqi = info.m_wbCqi;
@@ -178,7 +167,6 @@ NrMacSchedulerCQIManagement::RefreshDlCqiMaps(
         if (ue->m_dlCqi.m_timer == 0)
         {
             ue->m_dlCqi.m_wbCqi = 1; // lowest value for trying a transmission
-            ue->m_dlCqi.m_cqiType = NrMacSchedulerUeInfo::CqiInfo::WB;
             ue->m_dlMcs = GetStartMcsDl();
         }
         else
@@ -201,7 +189,6 @@ NrMacSchedulerCQIManagement::RefreshUlCqiMaps(
         if (ue->m_ulCqi.m_timer == 0)
         {
             ue->m_ulCqi.m_wbCqi = 1; // lowest value for trying a transmission
-            ue->m_ulCqi.m_cqiType = NrMacSchedulerUeInfo::CqiInfo::WB;
             ue->m_ulMcs = GetStartMcsUl();
         }
         else

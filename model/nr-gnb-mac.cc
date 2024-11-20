@@ -981,14 +981,6 @@ NrGnbMac::SetNrMacCschedSapProvider(NrMacCschedSapProvider* ptr)
 void
 NrGnbMac::DoUlCqiReport(NrMacSchedSapProvider::SchedUlCqiInfoReqParameters ulcqi)
 {
-    if (ulcqi.m_ulCqi.m_type == UlCqiInfo::PUSCH)
-    {
-        NS_LOG_DEBUG(this << " gNB rxed an PUSCH UL-CQI");
-    }
-    else if (ulcqi.m_ulCqi.m_type == UlCqiInfo::SRS)
-    {
-        NS_LOG_DEBUG(this << " gNB rxed an SRS UL-CQI");
-    }
     NS_LOG_INFO("*** UL CQI report SINR "
                 << nr::FfConverter::fpS11dot3toDouble(ulcqi.m_ulCqi.m_sinr[0])
                 << " slot: " << m_currentSlot);
@@ -1213,9 +1205,8 @@ NrGnbMac::DoSchedConfigIndication(NrMacSchedSapUser::SchedConfigIndParameters in
                             << (uint32_t)varTtiAllocInfo.m_dci->m_symStart << " to "
                             << (uint32_t)varTtiAllocInfo.m_dci->m_symStart +
                                    (uint32_t)varTtiAllocInfo.m_dci->m_numSym
-                            << ". "
-                            << " TB of size " << varTtiAllocInfo.m_dci->m_tbSize << " with MCS "
-                            << varTtiAllocInfo.m_dci->m_mcs);
+                            << ". " << " TB of size " << varTtiAllocInfo.m_dci->m_tbSize
+                            << " with MCS " << varTtiAllocInfo.m_dci->m_mcs);
             }
 
             // update Harq Processes
