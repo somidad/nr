@@ -122,26 +122,12 @@ NrMacSchedulerUeInfo::ResetUlSchedInfo()
 void
 NrMacSchedulerUeInfo::UpdateDlMetric(const Ptr<const NrAmc>& amc)
 {
-/* original
-    if (m_dlRBG == 0)
-    {
-        m_dlTbSize = 0;
-    }
-    else
-    {
-        m_dlTbSize = amc->CalculateTbSize(m_dlMcs, m_dlRank, m_dlRBG * GetNumRbPerRbg());
-    }
-*/
     m_dlRRcount++;
 }
 
 void
 NrMacSchedulerUeInfo::ResetDlMetric()
 {
-/* original
-    m_dlTbSize = 0;
-*/ 
-
 /*  This algorithm doesn't reset RRcount during simulation.(So uint64_t will overflow!!)
     If you need to reset, please define reset period to call this function or complete following statement
     
@@ -151,32 +137,17 @@ NrMacSchedulerUeInfo::ResetDlMetric()
        }
     }
 */
-    
 }
 
 void
 NrMacSchedulerUeInfo::UpdateUlMetric(const Ptr<const NrAmc>& amc)
 {
-/* original
-    if (m_ulRBG == 0)
-    {
-        m_ulTbSize = 0;
-    }
-    else
-    {
-        m_ulTbSize = amc->CalculateTbSize(m_ulMcs, m_ulRank, m_ulRBG * GetNumRbPerRbg());
-    }
-*/
     m_ulRRcount++;
 }
 
 void
 NrMacSchedulerUeInfo::ResetUlMetric()
 {
-/* original
-      m_ulTbSize = 0;
-*/ 
-
 /*  This algorithm doesn't reset RRcount during simulation.(So uint64_t will overflow!!)
     If you need to reset, please define reset period to call this function or complete following statement
     
