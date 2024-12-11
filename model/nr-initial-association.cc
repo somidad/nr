@@ -207,11 +207,14 @@ NrInitialAssociation::ExtractUeParameters() const
     auto spectrumPropModel = StaticCast<ThreeGppSpectrumPropagationLossModel>(
         spectrumChannel->GetPhasedArraySpectrumPropagationLossModel());
     AntennaArrayModels antModel;
-    auto bPhasedArrayModel = spectrumPhy->GetAntenna()->GetObject<PhasedArrayModel>();
-    antModel.ueArrayModel =
-        Copy<UniformPlanarArray>(DynamicCast<UniformPlanarArray>(bPhasedArrayModel));
-    antModel.ueArrayModel->SetNumVerticalPorts(bPhasedArrayModel->GetNumRows());
-    antModel.ueArrayModel->SetNumHorizontalPorts(bPhasedArrayModel->GetNumColumns());
+    for (uint8_t i = 0; i < spectrumPhy->GetNumPanels(); i++)
+    {
+        auto bPhasedArrayModel = spectrumPhy->GetPanelByIndex(i)->GetObject<PhasedArrayModel>();
+        antModel.ueArrayModel.push_back(
+            Copy<UniformPlanarArray>(DynamicCast<UniformPlanarArray>(bPhasedArrayModel)));
+        antModel.ueArrayModel[i]->SetNumVerticalPorts(bPhasedArrayModel->GetNumRows());
+        antModel.ueArrayModel[i]->SetNumHorizontalPorts(bPhasedArrayModel->GetNumColumns());
+    }
 
     auto channel =
         StaticCast<ThreeGppSpectrumPropagationLossModel>(spectrumPropModel)->GetChannelModel();
@@ -297,6 +300,7 @@ NrInitialAssociation::ComputeMaxRsrp(const Ptr<NetDevice>& gnbDevice, LocalSearc
     auto& chParams = lsps.chParams;
     auto& mobility = lsps.mobility;
     auto& antennas = lsps.antennaArrays;
+    uint8_t activePanelIndex = 0;
     antennas.gnbArrayModel = ExtractGnbParameters(gnbDevice, lsps);
     std::vector<int> activeRbs;
     for (size_t rbId = m_startSsb; rbId < m_numBandsSsb + m_startSsb; rbId++)
@@ -310,34 +314,44 @@ NrInitialAssociation::ComputeMaxRsrp(const Ptr<NetDevice>& gnbDevice, LocalSearc
         chParams.spectralModel,
         NrSpectrumValueHelper::UNIFORM_POWER_ALLOCATION_USED);
     auto txParams = Create<SpectrumSignalParameters>();
-    PhasedArrayModel::ComplexVector ueBfv(antennas.ueArrayModel->GetNumElems());
-    ueBfv[0] = 1.0;
-    antennas.ueArrayModel->SetBeamformingVector(ueBfv);
-    for (size_t i = 0; i < m_colBeamAngles.size(); i++)
+    for (auto& i : antennas.ueArrayModel)
+    {
+        PhasedArrayModel::ComplexVector uebfVector(i->GetNumElems());
+        uebfVector[0] = 1.0;
+        i->SetBeamformingVector(uebfVector);
+    }
+
+    for (size_t k = 0; k < antennas.ueArrayModel.size(); k++)
     {
         for (size_t j = 0; j < m_rowBeamAngles.size(); j++)
         {
-            auto bf =
-                GenBeamforming(m_rowBeamAngles[j], m_colBeamAngles[i], antennas.gnbArrayModel);
-            antennas.gnbArrayModel->SetBeamformingVector(bf);
-            txParams->psd = Copy<SpectrumValue>(fakePsd);
-            auto rxParam =
-                chParams.spectrumPropModel->DoCalcRxPowerSpectralDensity(txParams,
-                                                                         mobility.gnbMobility,
-                                                                         mobility.ueMobility,
-                                                                         antennas.gnbArrayModel,
-                                                                         antennas.ueArrayModel);
-            auto eng = ComputeRxEnergy(rxParam);
-            if (eng > maxEng)
+            for (size_t i = 0; i < m_colBeamAngles.size(); i++)
             {
-                maxEng = eng;
-                bfAngles = {m_rowBeamAngles[j], m_colBeamAngles[i]};
+                auto bf =
+                    GenBeamforming(m_rowBeamAngles[j], m_colBeamAngles[i], antennas.gnbArrayModel);
+                antennas.gnbArrayModel->SetBeamformingVector(bf);
+                txParams->psd = Copy<SpectrumValue>(fakePsd);
+                auto rxParam = chParams.spectrumPropModel->DoCalcRxPowerSpectralDensity(
+                    txParams,
+                    mobility.gnbMobility,
+                    mobility.ueMobility,
+                    antennas.gnbArrayModel,
+                    antennas.ueArrayModel[k]);
+                auto eng = ComputeRxEnergy(rxParam);
+                if (eng > maxEng)
+                {
+                    maxEng = eng;
+                    bfAngles = {m_rowBeamAngles[j], m_colBeamAngles[i]};
+                    activePanelIndex =
+                        k; // active panel has to be update to K as better beam has found
+                }
             }
         }
     }
     auto attenuation =
         chParams.pathLossModel->CalcRxPower(0, mobility.gnbMobility, mobility.ueMobility);
     m_bestBfVectors.push_back(bfAngles);
+    SetUeActivePanel(activePanelIndex);
     return pow(10.0, attenuation / 10.0) * maxEng;
 }
 
@@ -398,7 +412,8 @@ NrInitialAssociation::GetInterference(const std::vector<uint16_t>& idxVal) const
     cumSumIntf[0] = std::pow(10.0, m_maxRsrps[idxVal[0]] / 10.0);
     for (size_t i = 1; i < m_maxRsrps.size(); ++i)
     {
-        // Getting cumulative sum of received RSRP from gNB wherein RSRP are in increasing order
+        // Getting cumulative sum of received RSRP from gNB wherein RSRP are in
+        // increasing order
         cumSumIntf[i] = cumSumIntf[i - 1] + std::pow(10.0, m_maxRsrps[idxVal[i]] / 10.0);
     }
     return cumSumIntf;
@@ -410,10 +425,10 @@ NrInitialAssociation::GetTotalInterference(const std::vector<double>& cumSumIntf
     auto totalInterference =
         cumSumIntf[m_maxRsrps.size() - 1] -
         std::pow(10.0,
-                 m_rsrpAsscGnb /
-                     10.0); // subtract the energy of the associated gNB to get overall
-                            // interference. Note that because hand off margin, the associated gNB
-                            // may not be the one with highest received energy
+                 m_rsrpAsscGnb / 10.0); // subtract the energy of the associated gNB to get
+                                        // overall interference. Note that because hand off
+                                        // margin, the associated gNB may not be the one with
+                                        // highest received energy
     return totalInterference;
 }
 
@@ -425,8 +440,8 @@ NrInitialAssociation::GetNumIntfGnbsByRelRsrp(const std::vector<double> cumSumIn
     auto numIntfGnbs = m_maxRsrps.size() - 1;
     for (size_t i = 0; i < m_maxRsrps.size(); ++i)
     {
-        // This line is equivalent to  cumSumIntf[i] < relEng * Main Interference. Note that
-        // main interference is totalInterference - cumSumIntf[i]
+        // This line is equivalent to  cumSumIntf[i] < relEng * Main Interference.
+        // Note that main interference is totalInterference - cumSumIntf[i]
         if ((1 + relRsrpThreshold) * cumSumIntf[i] > relRsrpThreshold * totalInterference)
         {
             numIntfGnbs -= i; // -1 for the associated gNB
@@ -493,6 +508,15 @@ double
 NrInitialAssociation::GetAssociatedRsrp() const
 {
     return m_rsrpAsscGnb;
+}
+
+void
+NrInitialAssociation::SetUeActivePanel(int8_t panelIndex) const
+{
+    auto ueDev = m_ueDevice->GetObject<NrUeNetDevice>();
+    auto phy = ueDev->GetPhy(0);
+    auto spectrumPhy = phy->GetSpectrumPhy();
+    spectrumPhy->SetActivePanel(panelIndex);
 }
 
 } // namespace ns3
