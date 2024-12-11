@@ -37,6 +37,7 @@ This release will be compatible with ns-3.4x.
 
 Important news
 --------------
+- we introduce a multi panel antenna approach in spectrum phy which allows UE to have more than 1 panels which could be 1 of them activated at time. This feature is included in included in `AttachToMaxRsrpGnb` and `KroneckerQuasiOmniBeamforming`.
 - We introduced a new attachment algorithm `AttachToMaxRsrpGnb` which follows 3GPP configuration to attach UE to the gNB with highest RSRP within indicates handoff margin.
 - We introduced a new beamforming algorithms, `KroneckerBeamforming` and `KroneckerQuasiOmniBeamforming` which provides Kronecker based beamforming whereas in the `KroneckerBeamforming` both gNB and UE use Kronecker, and in the `KroneckerQuasiOmniBeamforming` gNB use Kronecker vector and UE used Omni direction to do Beamforming.
 - We introduced a new helper, `NrChannelHelper`, which provides a simple interface for configuring spectrum channels with various channel models, including NYUSIM, Fluctuating Two-Ray (FTR), and 3GPP.
