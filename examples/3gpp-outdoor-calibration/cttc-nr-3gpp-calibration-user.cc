@@ -56,7 +56,7 @@ main(int argc, char* argv[])
                  params.confType);
     cmd.AddValue("nrConfigurationScenario",
                  "The NR calibration scenario string. Choose among:"
-                 "DenseA, DenseB, RuralA, RuralB"
+                 "DenseA, DenseAmimo, DenseB, RuralA, RuralB"
                  "This variable must be set when calibrationConf is chosen",
                  params.nrConfigurationScenario);
     cmd.AddValue("scenario",

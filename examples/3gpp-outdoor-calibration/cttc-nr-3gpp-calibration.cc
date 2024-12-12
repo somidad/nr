@@ -179,7 +179,8 @@ Parameters::Validate() const
     // NS_ABORT_MSG_IF (enableFading == false && enableShadowing == true,
     //                  "Shadowing must be disabled fading is disabled mode");
     NS_ABORT_MSG_IF(
-        bfMethod != "Omni" && bfMethod != "CellScan" && bfMethod != "FixedBeam" &&
+        bfMethod != "Omni" && bfMethod != "CellScan" &&
+            bfMethod != "KroneckerQuasiOmniBeamforming" && bfMethod != "FixedBeam" &&
             bfMethod != "CellScanAzimuth",
         "For bfMethod you can choose among Omni, CellScan, CellScanAzimuth and FixedBeam");
     NS_ABORT_MSG_IF(confType != "customConf" && confType != "calibrationConf",
@@ -194,8 +195,9 @@ Parameters::Validate() const
         else if (radioNetwork == "NR")
         {
             NS_ABORT_MSG_IF(
-                (nrConfigurationScenario != "DenseA" && nrConfigurationScenario != "DenseB" &&
-                 nrConfigurationScenario != "RuralA" && nrConfigurationScenario != "RuralB"),
+                (nrConfigurationScenario != "DenseA" && nrConfigurationScenario != "DenseAmimo" &&
+                 nrConfigurationScenario != "DenseB" && nrConfigurationScenario != "RuralA" &&
+                 nrConfigurationScenario != "RuralB"),
                 "NR needs one of the NR pre-defined scenarios to be specified");
         }
         else
@@ -261,15 +263,45 @@ ChooseCalibrationScenario(Parameters& params)
                 params.linkO2iConditionToAntennaHeight = true;
 
                 params.gnbNumRows = 4;
+            }
+
+            if (params.nrConfigurationScenario == "DenseAmimo")
+            {
+                // Parameters based on  RP-180524 DenseA
+                params.scenario = "UMa";
+                params.startingFreq = 4e9;
+                params.bandwidthMHz = 10;
+                params.gnbTxPower = 41;
+                params.bsHeight = 25;
+                params.uesWithRandomUtHeight = 0.8;
+                params.isd = 200;
+                params.o2iThreshold = 0.8;
+                params.o2iLowLossThreshold = 0.8;
+
+                params.linkO2iConditionToAntennaHeight = true;
+                params.minBsUtDistance = 10;
+                params.gnbNumRows = 8;
                 params.gnbNumColumns = 8;
+                params.PolSlantAngleGnb = 45;
 
                 params.gnbHSpacing = 0.5;
                 params.gnbVSpacing = 0.8;
+                params.dualPolarizedGnb = true;
+                params.numVPortsGnb = 2;
+                params.numHPortsGnb = 1;
+                params.PolSlantAngleUe = 0;
 
+                params.ueNumColumns = 2;
+                params.numVPortsUe = 1;
+                params.numHPortsUe = 2;
+                params.ueHSpacing = 0.5;
+                params.dualPolarizedUe = true;
                 params.ueEnable3gppElement = false;
                 params.downtiltAngle = 0;
                 params.gnbNoiseFigure = 5;
                 params.ueNoiseFigure = 7;
+
+                params.attachRSRP = true;
             }
             else if (params.nrConfigurationScenario == "DenseB")
             {
@@ -730,7 +762,17 @@ Nr3gppCalibration(Parameters& params)
                                                   params.bfConfSector,
                                                   params.bfConfElevation,
                                                   params.isd,
-                                                  params.ueBearingAngle);
+                                                  params.ueBearingAngle,
+                                                  params.PolSlantAngleGnb,
+                                                  params.PolSlantAngleUe,
+                                                  params.dualPolarizedGnb,
+                                                  params.dualPolarizedUe,
+                                                  params.numVPortsGnb,
+                                                  params.numHPortsGnb,
+                                                  params.numVPortsUe,
+                                                  params.numHPortsUe,
+                                                  params.simTag,
+                                                  params.outputDir);
     }
 
     // Check we got one valid helper
@@ -801,38 +843,49 @@ Nr3gppCalibration(Parameters& params)
         ueStaticRouting->SetDefaultRoute(gatewayAddress, 1);
     }
 
-    if (nrHelper != nullptr && params.attachToClosest)
+    if (params.attachRSRP)
     {
-        nrHelper->AttachToClosestGnb(ueNetDevs, gnbNetDevs);
+        NrHelper::InitialAssocParams Initparams;
+        Initparams.rowAngles = {-56.25, -33.75, -11.25, 11.25, 33.75, 56.25};
+        Initparams.colAngles = {112.5, 157.5};
+        nrHelper->SetupInitialAssoc(Initparams);
+        nrHelper->AttachToMaxRsrpGnb(ueNetDevs, gnbNetDevs);
     }
     else
     {
-        // attach UEs to their gNB. Try to attach them per cellId order
-        std::cout << "  attach UEs to gNBs\n" << std::endl;
-        for (uint32_t ueId = 0; ueId < ueNodes.GetN(); ++ueId)
+        if (nrHelper != nullptr && params.attachToClosest)
         {
-            auto cellId = scenario->GetCellIndex(ueId);
-            Ptr<NetDevice> gnbNetDev = gnbNodes.Get(cellId)->GetDevice(0);
-            Ptr<NetDevice> ueNetDev = ueNodes.Get(ueId)->GetDevice(0);
-            if (lteHelper != nullptr)
+            nrHelper->AttachToClosestGnb(ueNetDevs, gnbNetDevs);
+        }
+        else
+        {
+            // attach UEs to their gNB. Try to attach them per cellId order
+            std::cout << "  attach UEs to gNBs\n" << std::endl;
+            for (uint32_t ueId = 0; ueId < ueNodes.GetN(); ++ueId)
             {
-                lteHelper->Attach(ueNetDev, gnbNetDev);
-            }
-            else if (nrHelper != nullptr)
-            {
-                nrHelper->AttachToGnb(ueNetDev, gnbNetDev);
-                auto uePhyBwp0{nrHelper->GetUePhy(ueNetDev, 0)};
-                auto gnbPhyBwp0{nrHelper->GetGnbPhy(gnbNetDev, 0)};
-                Vector gnbpos = gnbNetDev->GetNode()->GetObject<MobilityModel>()->GetPosition();
-                Vector uepos = ueNetDev->GetNode()->GetObject<MobilityModel>()->GetPosition();
-                double distance = CalculateDistance(gnbpos, uepos);
-                std::cout << "ueId " << ueId << ", cellIndex " << cellId << " ue Pos: " << uepos
-                          << " gnb Pos: " << gnbpos << ", ue freq "
-                          << uePhyBwp0->GetCentralFrequency() / 1e9 << ", gnb freq "
-                          << gnbPhyBwp0->GetCentralFrequency() / 1e9 << ", sector "
-                          << scenario->GetSectorIndex(cellId) << ", distance " << distance
-                          << ", azimuth gnb->ue:"
-                          << RadiansToDegrees(Angles(gnbpos, uepos).GetAzimuth()) << std::endl;
+                auto cellId = scenario->GetCellIndex(ueId);
+                Ptr<NetDevice> gnbNetDev = gnbNodes.Get(cellId)->GetDevice(0);
+                Ptr<NetDevice> ueNetDev = ueNodes.Get(ueId)->GetDevice(0);
+                if (lteHelper != nullptr)
+                {
+                    lteHelper->Attach(ueNetDev, gnbNetDev);
+                }
+                else if (nrHelper != nullptr)
+                {
+                    nrHelper->AttachToGnb(ueNetDev, gnbNetDev);
+                    auto uePhyBwp0{nrHelper->GetUePhy(ueNetDev, 0)};
+                    auto gnbPhyBwp0{nrHelper->GetGnbPhy(gnbNetDev, 0)};
+                    Vector gnbpos = gnbNetDev->GetNode()->GetObject<MobilityModel>()->GetPosition();
+                    Vector uepos = ueNetDev->GetNode()->GetObject<MobilityModel>()->GetPosition();
+                    double distance = CalculateDistance(gnbpos, uepos);
+                    std::cout << "ueId " << ueId << ", cellIndex " << cellId << " ue Pos: " << uepos
+                              << " gnb Pos: " << gnbpos << ", ue freq "
+                              << uePhyBwp0->GetCentralFrequency() / 1e9 << ", gnb freq "
+                              << gnbPhyBwp0->GetCentralFrequency() / 1e9 << ", sector "
+                              << scenario->GetSectorIndex(cellId) << ", distance " << distance
+                              << ", azimuth gnb->ue:"
+                              << RadiansToDegrees(Angles(gnbpos, uepos).GetAzimuth()) << std::endl;
+                }
             }
         }
     }
