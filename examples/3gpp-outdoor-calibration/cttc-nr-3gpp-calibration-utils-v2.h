@@ -88,7 +88,17 @@ class LenaV2Utils
                                              uint16_t beamConfSector,
                                              double beamConfElevation,
                                              double isd,
-                                             bool ueBearingAngle);
+                                             bool ueBearingAngle,
+                                             double PolSlantAngleGnb,
+                                             double PolSlantAngleUe,
+                                             bool dualPolarizedGnb,
+                                             bool dualPolarizedUe,
+                                             uint8_t numVPortsGnb,
+                                             uint8_t numHPortsGnb,
+                                             uint8_t numVPortsUe,
+                                             uint8_t numHPortsUe,
+                                             std::string simTag,
+                                             std::string outputDir);
 
     static void ReportSinrNr(SinrOutputStats* stats,
                              uint16_t cellId,

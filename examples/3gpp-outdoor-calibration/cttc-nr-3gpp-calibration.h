@@ -93,6 +93,7 @@ struct Parameters
     std::string scheduler = "PF";
     uint32_t freqScenario = 0;
     bool attachToClosest = false;
+    bool attachRSRP = true;
 
     double gnbNoiseFigure = 5.0;
     double ueNoiseFigure = 7.0;
@@ -117,14 +118,24 @@ struct Parameters
     uint32_t ueNumRows = 4;
     uint32_t ueNumColumns = 4;
 
+    uint8_t numVPortsGnb = 2;
+    uint8_t numHPortsGnb = 2;
+    uint8_t numVPortsUe = 1;
+    uint8_t numHPortsUe = 1;
+
     double gnbHSpacing = 0.5;
     double gnbVSpacing = 0.5;
     double ueHSpacing = 0.5;
     double ueVSpacing = 0.5;
 
     double downtiltAngle = 0.0;
+    double PolSlantAngleGnb = 0.0;
+    double PolSlantAngleUe = 0.0;
+
     bool ueBearingAngle = false;
 
+    bool dualPolarizedGnb = false;
+    bool dualPolarizedUe = false;
     // Whether gNB and UE antenna arrays support
     bool crossPolarizedGnb = false;
     bool crossPolarizedUe = false;

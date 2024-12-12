@@ -202,7 +202,17 @@ LenaV2Utils::SetLenaV2SimulatorParameters(const double sector0AngleRad,
                                           uint16_t beamConfSector,
                                           double beamConfElevation,
                                           double isd,
-                                          bool ueBearingAngle)
+                                          bool ueBearingAngle,
+                                          double PolSlantAngleGnb,
+                                          double PolSlantAngleUe,
+                                          bool dualPolarizedGnb,
+                                          bool dualPolarizedUe,
+                                          uint8_t numVPortsGnb,
+                                          uint8_t numHPortsGnb,
+                                          uint8_t numVPortsUe,
+                                          uint8_t numHPortsUe,
+                                          std::string simTag,
+                                          std::string outputDir)
 {
     /*
      * Create the radio network related parameters
@@ -667,6 +677,12 @@ LenaV2Utils::SetLenaV2SimulatorParameters(const double sector0AngleRad,
                     beamformingHelper->SetBeamformingMethod(
                         CellScanBeamformingAzimuthZenith::GetTypeId());
                 }
+                else if (bfMethod == "KroneckerQuasiOmniBeamforming")
+                {
+                    beamformingHelper->SetAttribute(
+                        "BeamformingMethod",
+                        TypeIdValue(KroneckerQuasiOmniBeamforming::GetTypeId()));
+                }
                 else
                 {
                     NS_ABORT_MSG("We shouldn't be here. bfMethod is: " << bfMethod);
@@ -734,6 +750,12 @@ LenaV2Utils::SetLenaV2SimulatorParameters(const double sector0AngleRad,
     nrHelper->SetUeAntennaAttribute("NumRows", UintegerValue(ueNumRows));
     nrHelper->SetUeAntennaAttribute("NumColumns", UintegerValue(ueNumColumns));
 
+    nrHelper->SetUeAntennaAttribute("NumVerticalPorts", UintegerValue(numVPortsUe));
+    nrHelper->SetUeAntennaAttribute("NumHorizontalPorts", UintegerValue(numHPortsUe));
+
+    nrHelper->SetUeAntennaAttribute("IsDualPolarized", BooleanValue(dualPolarizedUe));
+    nrHelper->SetUeAntennaAttribute("PolSlantAngle", DoubleValue(PolSlantAngleUe * M_PI / 180.0));
+
     if (ueEnable3gppElement)
     {
         nrHelper->SetUeAntennaAttribute("AntennaElement",
@@ -756,6 +778,12 @@ LenaV2Utils::SetLenaV2SimulatorParameters(const double sector0AngleRad,
     nrHelper->SetGnbAntennaAttribute("AntennaVerticalSpacing", DoubleValue(gnbVSpacing));
 
     nrHelper->SetGnbAntennaAttribute("DowntiltAngle", DoubleValue(downtiltAngle * M_PI / 180.0));
+
+    nrHelper->SetGnbAntennaAttribute("IsDualPolarized", BooleanValue(dualPolarizedGnb));
+    nrHelper->SetGnbAntennaAttribute("PolSlantAngle", DoubleValue(PolSlantAngleGnb * M_PI / 180.0));
+    nrHelper->SetGnbAntennaAttribute("NumVerticalPorts", UintegerValue(numVPortsGnb));
+    nrHelper->SetGnbAntennaAttribute("NumHorizontalPorts", UintegerValue(numHPortsGnb));
+    nrHelper->SetUeSpectrumAttribute("NumAntennaPanel", UintegerValue(1));
 
     if (gnbEnable3gppElement)
     {
@@ -967,6 +995,16 @@ LenaV2Utils::SetLenaV2SimulatorParameters(const double sector0AngleRad,
     {
         DynamicCast<NrUeNetDevice>(*nd)->UpdateConfig();
     }
+
+    nrHelper->EnableTraces();
+    nrHelper->GetPhyRxTrace()->SetResultsFolder(outputDir + simTag);
+    nrHelper->EnableDlDataPhyTraces();
+    nrHelper->EnableDlCtrlPhyTraces();
+    nrHelper->EnableDlCtrlPhyTraces();
+    nrHelper->EnablePathlossTraces();
+    nrHelper->EnableDlDataPathlossTraces(ueNetDevs);
+    nrHelper->EnableDlCtrlPathlossTraces(ueNetDevs);
+    nrHelper->EnableUlPhyTraces();
 }
 
 } // namespace ns3
