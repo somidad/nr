@@ -703,7 +703,7 @@ KroneckerBeamforming::GetBeamformingVectors(const Ptr<NrSpectrumPhy>& gnbSpectru
     u_int8_t activePanelIndex = 0;
     BeamformingVector gnbBfv;
     BeamformingVector ueBfv;
-    // configure gNB and ue beamforming vectors to be Kronecer
+    // configure gNB and ue beamforming vectors to be Kronecker
     for (uint8_t b = 0; b < ueSpectrumPhy->GetNumPanels(); b++)
     {
         for (size_t k = 0; k < m_colTxBeamAngles.size(); k++)
@@ -826,7 +826,7 @@ KroneckerQuasiOmniBeamforming::GetBeamformingVectors(const Ptr<NrSpectrumPhy>& g
     BeamformingVector ueBfv = {uebfV, OMNI_BEAM_ID};
     ueSpectrumPhy->GetAntenna()->GetObject<UniformPlanarArray>()->SetBeamformingVector(uebfV);
 
-    // configure gNB beamforming vector to be Kronecer
+    // configure gNB beamforming vector to be Kronecker
     Ptr<SpectrumSignalParameters> fakeParams = Create<SpectrumSignalParameters>();
     double maxPower = 0;
     BeamformingVector gnbBfv;
