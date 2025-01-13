@@ -692,7 +692,8 @@ Nr3gppIndoorCalibration::Run(double centralFrequencyBand,
     {
         // attach UEs to the highest RSRP gNB
         nrHelper->SetupInitialAssoc(initparams);
-        nrHelper->AttachToMaxRsrpGnb(ueNetDevs, gNbDevs);
+        Simulator::ScheduleNow(
+            [nrHelper, ueNetDevs, gNbDevs]() { nrHelper->AttachToMaxRsrpGnb(ueNetDevs, gNbDevs); });
     }
     else
     {
