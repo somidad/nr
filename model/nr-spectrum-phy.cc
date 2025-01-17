@@ -447,14 +447,16 @@ NrSpectrumPhy::ConfigPanelsBearingAngles()
     NS_LOG_FUNCTION(this);
     NS_ASSERT_MSG(m_numPanels == m_antennaPanels.size(), "mismatch of number of Panels");
 
-    auto firstPanelBearingAngleRad =
-        (DynamicCast<UniformPlanarArray>(m_antennaPanels[0]))->GetAlpha();
-
-    for (auto i = 0; i < m_numPanels; i++)
-
+    const auto antenna = DynamicCast<UniformPlanarArray>(m_antennaPanels[0]);
+    if (antenna)
     {
-        m_antennaPanels[i]->GetObject<UniformPlanarArray>()->SetAlpha(
-            CircularBearingAnglesForPanels(firstPanelBearingAngleRad, i));
+        auto firstPanelBearingAngleRad = antenna->GetAlpha();
+
+        for (auto i = 0; i < m_numPanels; i++)
+        {
+            m_antennaPanels[i]->GetObject<UniformPlanarArray>()->SetAlpha(
+                CircularBearingAnglesForPanels(firstPanelBearingAngleRad, i));
+        }
     }
 }
 
