@@ -299,15 +299,13 @@ main(int argc, char* argv[])
     GridScenarioHelper gridScenario;
     gridScenario.SetRows(1);
     gridScenario.SetColumns(gNbNum);
-    gridScenario.SetHorizontalBsDistance(5.0);
-    gridScenario.SetVerticalBsDistance(5.0);
+    gridScenario.SetBsDistance(5.0, 5.0);
     gridScenario.SetBsHeight(1.5);
     gridScenario.SetUtHeight(1.5);
     gridScenario.SetSectorization(GridScenarioHelper::SINGLE);
     gridScenario.SetBsNumber(gNbNum);
     gridScenario.SetUtNumber(ueNumPergNb * gNbNum);
-    gridScenario.SetScenarioHeight(3); // Create a 3x3 scenario where the UE will
-    gridScenario.SetScenarioLength(3); // be distributed.
+    gridScenario.SetGridSize(3, 3); // Create a 3x3 scenario where the UE will be distributed.
     randomStream += gridScenario.AssignStreams(randomStream);
     gridScenario.CreateScenario();
 
