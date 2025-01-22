@@ -389,8 +389,23 @@ NrHelper::CreateUePhy(const Ptr<Node>& n,
     channelPhy->SetIsGnb(false);
     channelPhy->SetDevice(dev); // each NrSpectrumPhy should have a pointer to device
 
-    auto antenna = m_ueAntennaFactory.Create(); // Create antenna object
-    channelPhy->SetAntenna(antenna);
+    // Create n antenna panels and beam manager for Ue
+    for (auto i = 0; i < channelPhy->GetNumPanels(); i++)
+    {
+        auto antenna = m_ueAntennaFactory.Create(); // Create antenna object per panel
+        channelPhy->AddPanel(antenna);
+        // Check if the antenna is a uniform planar array type
+        auto uniformPlanarArray = DynamicCast<UniformPlanarArray>(antenna);
+        if (uniformPlanarArray)
+        {
+            Ptr<BeamManager> beamManager = m_ueBeamManagerFactory.Create<BeamManager>();
+            beamManager->Configure(uniformPlanarArray);
+            channelPhy->AddBeamManager(beamManager);
+        }
+    }
+
+    channelPhy->ConfigPanelsBearingAngles(); // Config bearing angles for all panels installed in
+                                             // NrSpectrumPhy
 
     cam->SetNrSpectrumPhy(channelPhy); // connect CAM
 
@@ -446,14 +461,6 @@ NrHelper::CreateUePhy(const Ptr<Node>& n,
     channelPhy->SetPhyRxDataEndOkCallback(MakeCallback(&NrUePhy::PhyDataPacketReceived, phy));
     channelPhy->SetPhyRxCtrlEndOkCallback(phyRxCtrlCallback);
     channelPhy->SetPhyRxPssCallback(MakeCallback(&NrUePhy::ReceivePss, phy));
-    // Check if the antenna is a uniform planar array type
-    auto uniformPlanarArray = DynamicCast<UniformPlanarArray>(antenna);
-    if (uniformPlanarArray)
-    {
-        Ptr<BeamManager> beamManager = m_ueBeamManagerFactory.Create<BeamManager>();
-        beamManager->Configure(uniformPlanarArray);
-        channelPhy->SetBeamManager(beamManager);
-    }
     phy->InstallSpectrumPhy(channelPhy);
     return phy;
 }

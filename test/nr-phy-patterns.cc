@@ -221,6 +221,7 @@ NrPhyPatternTestCase::CreatePhy(const Ptr<NrGnbMac>& mac) const
     Ptr<NrGnbPhy> phy = CreateObject<NrGnbPhy>();
     Ptr<UniformPlanarArray> antenna = CreateObject<UniformPlanarArray>();
 
+    channelPhy->AddPanel(antenna);
     phy->InstallCentralFrequency(28e9);
 
     phy->ScheduleStartEventLoop(0, 0, 0, 0);
