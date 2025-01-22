@@ -111,10 +111,9 @@ class NrAmc : public Object
      * measured, during 1 OFDM symbol, is assumed.
      *
      * \param sinr the sinr values
-     * \param mcsWb The calculated MCS
-     * \return The calculated CQI
+     * \return The pair of calculated CQI and The calculated MCS
      */
-    uint8_t CreateCqiFeedbackWbTdma(const SpectrumValue& sinr, uint8_t& mcsWb) const;
+    std::pair<uint8_t, uint8_t> CreateCqiFeedbackWbTdma(const SpectrumValue& sinr) const;
 
     /**
      * \brief Get CQI from a SpectralEfficiency value
