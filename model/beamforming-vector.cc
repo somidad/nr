@@ -119,7 +119,7 @@ CreateDirectPathBfv(const Ptr<MobilityModel>& a,
 {
     // retrieve the position of the two devices
     Vector aPos = a->GetPosition();
-    Vector bPos = b->GetPosition();
+    Vector bPos = b->GetVirtualPosition(aPos);
 
     // compute the azimuth and the elevation angles
     Angles completeAngle(bPos, aPos);
