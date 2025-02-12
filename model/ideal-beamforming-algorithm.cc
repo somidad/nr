@@ -268,10 +268,6 @@ CellScanBeamformingAzimuthZenith::GetBeamformingVectors(
     PhasedArrayModel::ComplexVector maxTxW;
     PhasedArrayModel::ComplexVector maxRxW;
 
-    UintegerValue uintValue;
-    gnbSpectrumPhy->GetAntenna()->GetAttribute("NumRows", uintValue);
-    ueSpectrumPhy->GetAntenna()->GetAttribute("NumRows", uintValue);
-
     NS_ASSERT(gnbSpectrumPhy->GetAntenna()->GetObject<PhasedArrayModel>()->GetNumElems() &&
               ueSpectrumPhy->GetAntenna()->GetObject<PhasedArrayModel>()->GetNumElems());
 
