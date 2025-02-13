@@ -127,7 +127,7 @@ CellScanBeamforming::GetBeamformingVectors(const Ptr<NrSpectrumPhy>& gnbSpectrum
 
     for (double txTheta = 60; txTheta < 121; txTheta = txTheta + m_beamSearchAngleStep)
     {
-        for (uint16_t txSector = 0; txSector < txNumCols; txSector++)
+        for (double txSector = 0; txSector < txNumCols; txSector += 1.0 / m_oversamplingFactor)
         {
             NS_ASSERT(txSector < UINT16_MAX);
 
@@ -142,7 +142,8 @@ CellScanBeamforming::GetBeamformingVectors(const Ptr<NrSpectrumPhy>& gnbSpectrum
 
             for (double rxTheta = 60; rxTheta < 121; rxTheta = rxTheta + m_beamSearchAngleStep)
             {
-                for (uint16_t rxSector = 0; rxSector < rxNumCols; rxSector++)
+                for (double rxSector = 0; rxSector < rxNumCols;
+                     rxSector += 1.0 / m_oversamplingFactor)
                 {
                     NS_ASSERT(rxSector < UINT16_MAX);
 
