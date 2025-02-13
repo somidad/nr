@@ -7,6 +7,7 @@
 #include "nr-spectrum-phy.h"
 
 #include "ns3/double.h"
+#include "ns3/integer.h"
 #include "ns3/multi-model-spectrum-channel.h"
 #include "ns3/node.h"
 #include "ns3/nr-spectrum-value-helper.h"
@@ -30,7 +31,14 @@ NS_OBJECT_ENSURE_REGISTERED(KroneckerQuasiOmniBeamforming);
 TypeId
 IdealBeamformingAlgorithm::GetTypeId()
 {
-    static TypeId tid = TypeId("ns3::IdealBeamformingAlgorithm").SetParent<Object>();
+    static TypeId tid =
+        TypeId("ns3::IdealBeamformingAlgorithm")
+            .SetParent<Object>()
+            .AddAttribute("OversamplingFactor",
+                          "Samples per antenna row/column",
+                          IntegerValue(1),
+                          MakeIntegerAccessor(&IdealBeamformingAlgorithm::m_oversamplingFactor),
+                          MakeIntegerChecker<uint8_t>(1, 4));
     return tid;
 }
 

@@ -46,6 +46,9 @@ class IdealBeamformingAlgorithm : public Object
     virtual BeamformingVectorPair GetBeamformingVectors(
         const Ptr<NrSpectrumPhy>& gnbSpectrumPhy,
         const Ptr<NrSpectrumPhy>& ueSpectrumPhy) const = 0;
+
+  protected:
+    uint8_t m_oversamplingFactor; //!< Number of samples per row/scan
 };
 
 /**
