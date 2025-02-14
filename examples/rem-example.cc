@@ -543,7 +543,9 @@ main(int argc, char* argv[])
     remHelper->SetMinY(yMin);
     remHelper->SetMaxY(yMax);
     remHelper->SetResY(yRes);
-    remHelper->SetZ(z);
+    remHelper->SetMinZ(z);
+    remHelper->SetMaxZ(z + 1);
+    remHelper->SetResZ(1);
     remHelper->SetSimTag(simTag);
 
     gnbNetDev.Get(0)

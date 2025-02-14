@@ -142,6 +142,12 @@ class NrRadioEnvironmentMapHelper : public Object
     void SetMinY(double yMin);
 
     /**
+     * @brief Sets the min z coordinate of the map
+     * @param zMin The min z coordinate
+     */
+    void SetMinZ(double zMin);
+
+    /**
      * @brief Sets the max x coordinate of the map
      * @param xMax The max x coordinate
      */
@@ -152,6 +158,12 @@ class NrRadioEnvironmentMapHelper : public Object
      * @param yMax The max y coordinate
      */
     void SetMaxY(double yMax);
+
+    /**
+     * @brief Sets the max z coordinate of the map
+     * @param zMax The max z coordinate
+     */
+    void SetMaxZ(double zMax);
 
     /**
      * @brief Sets the resolution (number of points) of the map along the x axis
@@ -166,10 +178,10 @@ class NrRadioEnvironmentMapHelper : public Object
     void SetResY(uint16_t yRes);
 
     /**
-     * @brief Sets the z coordinate of the map
-     * @param z The z coordinate
+     * @brief Sets the resolution (number of points) of the map along the z axis
+     * @param zRes The z axis resolution
      */
-    void SetZ(double z);
+    void SetResZ(uint16_t zRes);
 
     /**
      * @brief Sets the number of iterations to calculate the average of rem value
@@ -200,6 +212,11 @@ class NrRadioEnvironmentMapHelper : public Object
     double GetMinY() const;
 
     /**
+     * @return Gets the value of the min z coordinate of the map
+     */
+    double GetMinZ() const;
+
+    /**
      * @return Gets the value of the max x coordinate of the map
      */
     double GetMaxX() const;
@@ -208,6 +225,11 @@ class NrRadioEnvironmentMapHelper : public Object
      * @return Gets the value of the max y coordinate of the map
      */
     double GetMaxY() const;
+
+    /**
+     * @return Gets the value of the max z coordinate of the map
+     */
+    double GetMaxZ() const;
 
     /**
      * @return Gets the value of the resolution (number of points)
@@ -222,9 +244,10 @@ class NrRadioEnvironmentMapHelper : public Object
     uint16_t GetResY() const;
 
     /**
-     * @return Gets the value of the z coordinate of the map
+     * @return Gets the value of the resolution (number of points)
+     * of the map along the Z axis
      */
-    double GetZ() const;
+    uint16_t GetResZ() const;
 
     /**
      * @brief Convert from Watts to dBm.
@@ -323,7 +346,7 @@ class NrRadioEnvironmentMapHelper : public Object
     };
 
     /**
-     * @brief This method creates the list of Rem Points (coordinates) based on
+     * @brief This method creates the vector of Rem Points (coordinates) based on
      * the min/max coprdinates and the resolution defined by the user
      */
     void CreateListOfRemPoints();
@@ -396,74 +419,74 @@ class NrRadioEnvironmentMapHelper : public Object
     /**
      * @brief This function finds the max value in a space of frequency-dependent
      * values (such as PSD).
-     * @param values The list of spectrumValues for which we want to find the max
+     * @param values The vector of spectrumValues for which we want to find the max
      * @return The max spectrumValue
      */
-    Ptr<SpectrumValue> GetMaxValue(const std::list<Ptr<SpectrumValue>>& values) const;
+    Ptr<SpectrumValue> GetMaxValue(const std::vector<Ptr<SpectrumValue>>& values) const;
 
     /**
      * @brief This function finds the max value in a space of frequency-dependent
      * values (such as PSD).
-     * @param values The list of spectrumValues for which we want to find the max
+     * @param values The vector of spectrumValues for which we want to find the max
      * @return The max value (snr)
      */
-    double CalculateMaxSnr(const std::list<Ptr<SpectrumValue>>& receivedPowerList) const;
+    double CalculateMaxSnr(const std::vector<Ptr<SpectrumValue>>& receivedPowerList) const;
 
     /**
      * @brief This function finds the max value in a space of frequency-dependent
      * values (such as PSD).
-     * @param values The list of spectrumValues for which we want to find the max
+     * @param values The vector of spectrumValues for which we want to find the max
      * @return The max value (sinr)
      */
-    double CalculateMaxSinr(const std::list<Ptr<SpectrumValue>>& receivedPowerList) const;
+    double CalculateMaxSinr(const std::vector<Ptr<SpectrumValue>>& receivedPowerList) const;
 
     /**
      * @brief This function finds the max value in a space of frequency-dependent
      * values (such as PSD).
-     * @param values The list of spectrumValues for which we want to find the max
+     * @param values The vector of spectrumValues for which we want to find the max
      * @return The max value (sinr)
      */
-    double CalculateMaxSir(const std::list<Ptr<SpectrumValue>>& receivedPowerList) const;
+    double CalculateMaxSir(const std::vector<Ptr<SpectrumValue>>& receivedPowerList) const;
 
     /**
      * @brief This function calculates the SINR for a given space of frequency-dependent
      * values (such as PSD).
      * @param usefulSignal The spectrumValue considered as useful signal
-     * @param interferenceSignals The list of spectrumValues considered as interference
+     * @param interferenceSignals The vector of spectrumValues considered as interference
      * @return The max value (sinr)
      */
     double CalculateSinr(const Ptr<SpectrumValue>& usefulSignal,
-                         const std::list<Ptr<SpectrumValue>>& interferenceSignals) const;
+                         const std::vector<Ptr<SpectrumValue>>& interferenceSignals) const;
 
     /**
      * @brief This function calculates the SIR for a given space of frequency-dependent
      * values (such as PSD).
      * @param usefulSignal The spectrumValue considered as useful signal
-     * @param interferenceSignals The list of spectrumValues considered as interference
+     * @param interferenceSignals The vector of spectrumValues considered as interference
      * @return The max value (sir)
      */
     double CalculateSir(const Ptr<SpectrumValue>& usefulSignal,
-                        const std::list<Ptr<SpectrumValue>>& interferenceSignals) const;
+                        const std::vector<Ptr<SpectrumValue>>& interferenceSignals) const;
 
     /**
-     * @brief This function finds the max value in a list of double values.
-     * @param values The list of double values
+     * @brief This function finds the max value in a vector of double values.
+     * @param values The vector of double values
      * @return The max value
      */
-    double GetMaxValue(const std::list<double>& listOfValues) const;
+    double GetMaxValue(const std::vector<double>& listOfValues) const;
 
     /**
      * @brief This function returns the integral of the sum of the elements of a
-     * list of SpectrumValues
-     * @return The integral of the sum of the elements of the list
+     * vector of SpectrumValues
+     * @return The integral of the sum of the elements of the vector
      */
-    double CalculateAggregatedIpsd(const std::list<Ptr<SpectrumValue>>& interferenceSignals);
+    double CalculateAggregatedIpsd(const std::vector<Ptr<SpectrumValue>>& interferenceSignals);
 
     /**
-     * @brief This function returns the sum of the elements of a list of double values
-     * @return The sum of the elements of the list
+     * @brief This function returns the sum of the elements of a vector of double values
+     * @return The sum of the elements of the vector
      */
-    double SumListElements(const std::list<double>& listOfValues);
+    double SumListElements(const std::vector<double>& listOfValues);
 
     /**
      * @brief Configures propagation loss model factories
@@ -536,8 +559,8 @@ class NrRadioEnvironmentMapHelper : public Object
                                 const RemDevice& otherDevice,
                                 const Ptr<const UniformPlanarArray>& antenna);
 
-    std::list<RemDevice> m_remDev; ///< List of REM Transmitting Devices (RTDs).
-    std::list<RemPoint> m_rem;     ///< List of REM points.
+    std::vector<RemDevice> m_remDev; ///< List of REM Transmitting Devices (RTDs).
+    std::vector<RemPoint> m_rem;     ///< List of REM points.
 
     std::chrono::system_clock::time_point
         m_remStartTime; //!< Time at which REM generation has started
@@ -553,7 +576,11 @@ class NrRadioEnvironmentMapHelper : public Object
     double m_yMax{0};   ///< The `YMax` attribute.
     uint16_t m_yRes{0}; ///< The `YRes` attribute.
     double m_yStep{0};  ///< Distance along Y axis between adjacent listening points.
-    double m_z{0};      ///< The `Z` attribute.
+
+    double m_zMin{0};   ///< The `ZMin` attribute.
+    double m_zMax{0};   ///< The `ZMax` attribute.
+    uint16_t m_zRes{0}; ///< The `ZRes` attribute.
+    double m_zStep{0};  ///< Distance along Z axis between adjacent listening points.
 
     uint16_t m_numOfIterationsToAverage{1};
     Time m_installationDelay{Seconds(0)};
