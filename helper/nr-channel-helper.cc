@@ -6,22 +6,22 @@
 
 #include "nr-channel-helper.h"
 
-#include <ns3/buildings-channel-condition-model.h>
-#include <ns3/double.h>
-#include <ns3/enum.h>
-#include <ns3/multi-model-spectrum-channel.h>
-#include <ns3/nyu-propagation-loss-model.h>
-#include <ns3/nyu-spectrum-propagation-loss-model.h>
-#include <ns3/object-factory.h>
-#include <ns3/pointer.h>
-#include <ns3/simulator.h>
-#include <ns3/string.h>
-#include <ns3/three-gpp-channel-model.h>
-#include <ns3/three-gpp-propagation-loss-model.h>
-#include <ns3/three-gpp-spectrum-propagation-loss-model.h>
-#include <ns3/three-gpp-v2v-channel-condition-model.h>
-#include <ns3/three-gpp-v2v-propagation-loss-model.h>
-#include <ns3/two-ray-spectrum-propagation-loss-model.h>
+#include "ns3/buildings-channel-condition-model.h"
+#include "ns3/double.h"
+#include "ns3/enum.h"
+#include "ns3/multi-model-spectrum-channel.h"
+#include "ns3/nyu-propagation-loss-model.h"
+#include "ns3/nyu-spectrum-propagation-loss-model.h"
+#include "ns3/object-factory.h"
+#include "ns3/pointer.h"
+#include "ns3/simulator.h"
+#include "ns3/string.h"
+#include "ns3/three-gpp-channel-model.h"
+#include "ns3/three-gpp-propagation-loss-model.h"
+#include "ns3/three-gpp-spectrum-propagation-loss-model.h"
+#include "ns3/three-gpp-v2v-channel-condition-model.h"
+#include "ns3/three-gpp-v2v-propagation-loss-model.h"
+#include "ns3/two-ray-spectrum-propagation-loss-model.h"
 
 namespace ns3
 {
@@ -117,17 +117,6 @@ NrChannelHelper::CreateChannel(uint8_t flags)
         {
             channelObject = matrixChannelClassPtr.Get<MatrixBasedChannelModel>();
             channelObject->AggregateObject(spectrumLossModel);
-
-            // Break the circular dependency between channel and spectrumLoss objects
-            // before disposing the objects to avoid a memory leak until ns-3.44
-            auto threeGppSpecProp =
-                DynamicCast<ThreeGppSpectrumPropagationLossModel>(spectrumLossModel);
-            if (threeGppSpecProp)
-            {
-                Simulator::ScheduleDestroy(&ThreeGppSpectrumPropagationLossModel::SetChannelModel,
-                                           threeGppSpecProp,
-                                           CreateObject<ThreeGppChannelModel>());
-            }
         }
         else
         {

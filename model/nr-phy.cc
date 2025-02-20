@@ -14,9 +14,9 @@
 #include "nr-net-device.h"
 #include "nr-spectrum-phy.h"
 
+#include "ns3/boolean.h"
 #include "ns3/pointer.h"
 #include "ns3/uniform-planar-array.h"
-#include <ns3/boolean.h>
 
 #include <algorithm>
 
@@ -188,7 +188,6 @@ NrPhy::NrPhy()
 {
     NS_LOG_FUNCTION(this);
     m_phySapProvider = new NrMemberPhySapProvider(this);
-    SetNumerology(0); // Initialize sub-carrier spacing assuming numerology 0
 }
 
 NrPhy::~NrPhy()

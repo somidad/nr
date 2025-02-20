@@ -6,12 +6,12 @@
 
 #include "nr-spectrum-phy.h"
 
-#include <ns3/double.h>
-#include <ns3/multi-model-spectrum-channel.h>
-#include <ns3/node.h>
-#include <ns3/nr-spectrum-value-helper.h>
-#include <ns3/uinteger.h>
-#include <ns3/uniform-planar-array.h>
+#include "ns3/double.h"
+#include "ns3/multi-model-spectrum-channel.h"
+#include "ns3/node.h"
+#include "ns3/nr-spectrum-value-helper.h"
+#include "ns3/uinteger.h"
+#include "ns3/uniform-planar-array.h"
 
 namespace ns3
 {
@@ -816,7 +816,7 @@ KroneckerQuasiOmniBeamforming::GetBeamformingVectors(const Ptr<NrSpectrumPhy>& g
     BeamformingVector ueBfv = {uebfV, OMNI_BEAM_ID};
     ueSpectrumPhy->GetAntenna()->GetObject<UniformPlanarArray>()->SetBeamformingVector(uebfV);
 
-    // configure gNB beamforming vector to be Kronecer
+    // configure gNB beamforming vector to be Kronecker
     Ptr<SpectrumSignalParameters> fakeParams = Create<SpectrumSignalParameters>();
     double maxPower = 0;
     BeamformingVector gnbBfv;
