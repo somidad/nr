@@ -961,8 +961,8 @@ NrRadioEnvironmentMapHelper::CalcBeamShapeRemMap()
         double sumSnr = 0.0;
         double sumSinr = 0.0;
         double sumSir = 0.0;
-        std::vector<double> rxPsdsListPerIt; // vector to save the summed rxPower in each RemPoint
-                                             // for each Iteration (linear)
+        // vector to save the summed rxPower in each RemPoint for each Iteration (linear)
+        std::vector<double> rxPsdsListPerIt(m_numOfIterationsToAverage);
         m_rrd.mob->SetPosition(itRemPoint->pos);
 
         Ptr<MobilityBuildingInfo> buildingInfo = m_rrd.mob->GetObject<MobilityBuildingInfo>();
@@ -971,13 +971,13 @@ NrRadioEnvironmentMapHelper::CalcBeamShapeRemMap()
 
         for (uint16_t i = 0; i < m_numOfIterationsToAverage; i++)
         {
-            std::vector<Ptr<SpectrumValue>>
-                receivedPowerList; // RTD node id, rxPsd of the signal coming from that node
+            // RTD node id, rxPsd of the signal coming from that node
+            std::vector<Ptr<SpectrumValue>> receivedPowerList(m_remDev.size());
 
-            for (auto& itRtd : m_remDev)
+            for (size_t j = 0; j < receivedPowerList.size(); j++)
             {
                 // calculate received power from the current RTD device
-                receivedPowerList.push_back(CalcRxPsdValue(itRtd, m_rrd));
+                receivedPowerList.at(j) = CalcRxPsdValue(m_remDev.at(j), m_rrd);
             } // end for std::vector<RemDev>::iterator  (RTDs)
 
             sumSnr += CalculateMaxSnr(receivedPowerList);
@@ -986,9 +986,7 @@ NrRadioEnvironmentMapHelper::CalcBeamShapeRemMap()
 
             // Sum all the rxPowers (for this RemPoint) and put the result to the vector for each
             // Iteration (linear)
-            rxPsdsListPerIt.push_back(CalculateAggregatedIpsd(receivedPowerList));
-
-            receivedPowerList.clear();
+            rxPsdsListPerIt.at(i) = CalculateAggregatedIpsd(receivedPowerList);
         } // end for m_numOfIterationsToAverage  (Average)
 
         // Sum the rxPower for all the Iterations (linear)
