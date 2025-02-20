@@ -253,7 +253,8 @@ class NrMacSchedulerUeInfo
     uint32_t m_ulRBG{0};     //!< UL Resource Block Group assigned in this slot
     uint8_t m_dlSym{0};      //!< Number of (new data) symbols assigned in this slot.
     uint8_t m_ulSym{0};      //!< Number of (new data) symbols assigned in this slot.
-
+    uint64_t m_dlRRcount{0};   //!< How many times dlRBG is assigned by RR scheduler.
+    uint64_t m_ulRRcount{0};   //!< How many times ulRBG is assigned by RR scheduler.
     uint8_t m_dlMcs{0}; //!< DL MCS
     uint8_t m_ulMcs{0}; //!< UL MCS
 
