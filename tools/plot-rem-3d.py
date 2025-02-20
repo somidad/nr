@@ -49,12 +49,17 @@ ax.set_zlim((heights[0], heights[-1]))
 
 def plotHeight(i):
     remOutputFiltered = list(filter(lambda s: float(s["z"]) == heights[i], remOutput))
+    remOutputFiltered = list(sorted(remOutputFiltered, key=lambda s: float(s["z"])))
+    remOutputFiltered = list(sorted(remOutputFiltered, key=lambda s: float(s["y"])))
+    remOutputFiltered = list(sorted(remOutputFiltered, key=lambda s: float(s["x"])))
     ax.scatter(
         list(map(lambda s: float(s["x"]), remOutputFiltered)),
         list(map(lambda s: float(s["y"]), remOutputFiltered)),
+        #[0]*len(remOutputFiltered),#
         list(map(lambda s: float(s["z"]), remOutputFiltered)),
         c=list(map(lambda s: float(s["avgSinrDb"]), remOutputFiltered)),
         norm=norm,
+        s=3
     )
     return (ax,)
 
