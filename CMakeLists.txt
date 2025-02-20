@@ -174,7 +174,10 @@ set(source_files
     model/nr-phy-mac-common.cc
     model/nr-phy-tag.cc
     model/nr-phy.cc
+    model/nr-pm-search-fast.cc
     model/nr-pm-search-full.cc
+    model/nr-pm-search-ideal.cc
+    model/nr-pm-search-sasaoka.cc
     model/nr-pm-search.cc
     model/nr-radio-bearer-info.cc
     model/nr-radio-bearer-tag.cc
@@ -372,7 +375,10 @@ set(header_files
     model/nr-phy-sap.h
     model/nr-phy-tag.h
     model/nr-phy.h
+    model/nr-pm-search-fast.h
     model/nr-pm-search-full.h
+    model/nr-pm-search-ideal.h
+    model/nr-pm-search-sasaoka.h
     model/nr-pm-search.h
     model/nr-radio-bearer-info.h
     model/nr-radio-bearer-tag.h
@@ -472,6 +478,7 @@ set(test_sources
     test/nr-test-epc-e2e-data.cc
     test/nr-test-deactivate-bearer.cc
     test/nr-channel-setup-test.cc
+    test/nr-test-ri-pmi.cc
     # cmake-format: off
     # todo:
     # test/nr-test-x2-handover.cc               \
@@ -490,6 +497,46 @@ set(test_sources
     # test/nr-test-cqi-generation.cc
     # cmake-format: on
 )
+
+check_deps(
+  hosvd_deps
+  PYTHON_PACKAGES
+  pyttb # Requires patches to compute HOSVD for a complex tensor. Use
+  # pip install git+https://gitlab.com/cttc-lena/pyttb
+  pybind11
+)
+if(NOT
+   ("${hosvd_deps}"
+    STREQUAL
+    "")
+   OR WIN32
+)
+  message(
+    STATUS
+      "Search-free PMI selection requires pyttb and pybind11, and only works on Unix"
+  )
+else()
+  find_package(
+    pybind11
+    REQUIRED
+  )
+  link_libraries(
+    pybind11::headers
+    pybind11::embed
+    ${CMAKE_DL_LIBS}
+  )
+  list(
+    APPEND
+    source_files
+    model/nr-pm-search-maleki.cc
+  )
+  list(
+    APPEND
+    header_files
+    model/nr-pm-search-maleki.h
+  )
+  add_compile_definitions(PMI_MALEKI=1)
+endif()
 
 build_lib(
   LIBNAME nr
