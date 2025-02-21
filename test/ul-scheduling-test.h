@@ -47,8 +47,19 @@ class UlSchedulingTest : public TestCase
      *        the test parameters.
      * @param reverseTime the time instant when the UE starts approaching the gNB
      * @param harqActive true when HARQ is active
+     * @param startUEPosY the starting position of the UE
+     * @param simTime the simulation time
+     * @param speed the speed at which the UE moves
+     * @param packetPeriod the packet transmission periodicity of the UE
+     * @param packetSize the size of the transmitted packet
      */
-    UlSchedulingTest(Time reverseTime, bool harqActive);
+    UlSchedulingTest(Time reverseTime,
+                     bool harqActive,
+                     uint32_t startUEPosY,
+                     Time simTime,
+                     double speed,
+                     Time packetPeriod,
+                     uint32_t packetSize);
     /**
      * @brief ~SystemSchedulerTest
      */
@@ -57,11 +68,20 @@ class UlSchedulingTest : public TestCase
   private:
     void DoRun() override;
 
-    void ReverseUeDirection(Ptr<Node> ueNode, double speed);
-    void ScheduleNextPacketTransmission(Ptr<Node> ue, uint32_t ueNum, Time nextTime);
+    void ReverseUeDirection(Ptr<Node> ueNode);
+    void ShowScheduledNextPacketTransmission(Ptr<Node> ue, uint32_t ueNum);
 
-    Time m_reverseTime; ///< time instant when the UE starts approaching the gNB
-    bool m_harqActive;  ///< true if HARQ is active
+    Time m_simTime;     ///< the simulation time (milliseconds)
+    double m_speed;     ///< the speed at which the UE moves (meters/s)
+    Time m_reverseTime; ///< time instant when the UE starts approaching the gNB (ms)
+
+    uint32_t m_startUEPosY; ///< the starting position of the UE (meters)
+    Time m_packetPeriod;    ///< the periodicity of packet transmission (ms)
+    uint32_t m_packetSize;  ///< the size of the transmitted packet
+
+    bool m_harqActive; ///< true if HARQ is active
+
+    Time m_nextTime; ///< the next packet transmission time
 };
 
 } // namespace ns3

@@ -6,6 +6,7 @@
 
 #include "ns3/applications-module.h"
 #include "ns3/config.h"
+#include "ns3/flow-monitor-module.h"
 #include "ns3/internet-module.h"
 #include "ns3/log.h"
 #include "ns3/mobility-module.h"
@@ -21,7 +22,19 @@ NS_LOG_COMPONENT_DEFINE("UlSchedulingTestCase");
 UlSchedulingTestSuite::UlSchedulingTestSuite()
     : TestSuite("nr-ul-scheduling-test", Type::SYSTEM)
 {
-    AddTestCase(new UlSchedulingTest(MilliSeconds(800), false), Duration::QUICK);
+    // Test with realistic values
+    // The UE starts from position 60 and moves along the Y-axis at a speed of 5 m/s. It transmits a
+    // packet every 2 seconds. After 10 seconds, it begins moving back toward the gNB
+    AddTestCase(new UlSchedulingTest(MilliSeconds(10500),
+                                     false,
+                                     60,
+                                     MilliSeconds(20000),
+                                     5,
+                                     Seconds(2),
+                                     1250),
+                Duration::QUICK);
+
+    // The rest of the test uses non-realistic values in order to speed up the simulation time
 }
 
 /**
@@ -30,11 +43,22 @@ UlSchedulingTestSuite::UlSchedulingTestSuite()
  */
 static UlSchedulingTestSuite m_UlSchedulingTestSuite; //!< Nr test suite
 
-UlSchedulingTest::UlSchedulingTest(Time reverseTime, bool harqActive)
+UlSchedulingTest::UlSchedulingTest(Time reverseTime,
+                                   bool harqActive,
+                                   uint32_t startUEPosY,
+                                   Time simTime,
+                                   double speed,
+                                   Time packetPeriod,
+                                   uint32_t packetSize)
     : TestCase("UL transmissions Test Case")
 {
     m_reverseTime = reverseTime;
     m_harqActive = harqActive;
+    m_startUEPosY = startUEPosY;
+    m_simTime = simTime;
+    m_speed = speed;
+    m_packetPeriod = packetPeriod;
+    m_packetSize = packetSize;
 }
 
 UlSchedulingTest::~UlSchedulingTest()
@@ -42,28 +66,54 @@ UlSchedulingTest::~UlSchedulingTest()
 }
 
 void
-UlSchedulingTest::ScheduleNextPacketTransmission(Ptr<Node> ue, uint32_t ueNum, Time nextTime)
+UlSchedulingTest::ShowScheduledNextPacketTransmission(Ptr<Node> ue, uint32_t ueNum)
 {
-    Simulator::Schedule(MilliSeconds(50),
-                        &UlSchedulingTest::ScheduleNextPacketTransmission,
+    Vector currentPosition = ue->GetObject<MobilityModel>()->GetPosition();
+    NS_LOG_INFO("Current position =" << currentPosition
+                                     << " and Next packet transmission time = " << m_nextTime);
+    m_nextTime += m_packetPeriod;
+    Simulator::Schedule(m_packetPeriod,
+                        &UlSchedulingTest::ShowScheduledNextPacketTransmission,
                         this,
                         ue,
-                        ueNum,
-                        nextTime + MilliSeconds(50));
+                        ueNum);
 }
 
 void
-UlSchedulingTest::ReverseUeDirection(Ptr<Node> ueNode, double speed)
+UlSchedulingTest::ReverseUeDirection(Ptr<Node> ueNode)
 {
-    ueNode->GetObject<ConstantVelocityMobilityModel>()->SetVelocity(Vector(0, -speed, 0));
+    NS_LOG_FUNCTION(this);
+    ueNode->GetObject<ConstantVelocityMobilityModel>()->SetVelocity(Vector(0, -m_speed, 0));
 }
 
 void
 UlSchedulingTest::DoRun()
 {
+    LogLevel logLevel = (LogLevel)(LOG_PREFIX_FUNC | LOG_PREFIX_TIME | LOG_LEVEL_ALL);
+    LogLevel logLevel1 =
+        (LogLevel)(LOG_PREFIX_FUNC | LOG_PREFIX_TIME | LOG_PREFIX_NODE | LOG_LEVEL_INFO);
+    LogLevel logLevel2 =
+        (LogLevel)(LOG_PREFIX_FUNC | LOG_PREFIX_TIME | LOG_PREFIX_NODE | LOG_LEVEL_DEBUG);
+    LogComponentEnable("UlSchedulingTestCase", logLevel);
+    LogComponentEnable("UlSchedulingTestCase", logLevel1);
+    LogComponentEnable("UlSchedulingTestCase", logLevel2);
+
+    LogComponentEnable("NrUeMac", logLevel1);
+    LogComponentEnable("NrUeMac", logLevel2);
+    LogComponentEnable("NrRlcUm", logLevel1);
+    LogComponentEnable("NrRlcUm", logLevel2);
+    LogComponentEnable("FlowMonitor", logLevel1);
+    LogComponentEnable("FlowMonitor", logLevel2);
+
+    LogComponentEnable("NrGnbMac", logLevel1);
+    LogComponentEnable("NrGnbMac", logLevel2);
+    LogComponentEnable("NrMacSchedulerNs3", logLevel1);
+    LogComponentEnable("NrMacSchedulerNs3", logLevel2);
+
     // Simulation parameters //
-    Time simTime = MilliSeconds(2000); // 1100
-    Time udpAppStartTimeUl = MilliSeconds(400);
+    Time simTime = m_simTime;
+    Time udpAppStartTimeUl = MilliSeconds(500);
+    m_nextTime = udpAppStartTimeUl;
 
     // Create base stations and mobile terminals //
     NodeContainer gNbNode;
@@ -78,20 +128,18 @@ UlSchedulingTest::DoRun()
     mobility->SetPosition(Vector(0, 0, 10));
 
     MobilityHelper ueMobility;
-    double speed = 150; // m/s
     ueMobility.SetMobilityModel("ns3::ConstantVelocityMobilityModel");
     ueMobility.Install(ueNode);
     Ptr<Node> ue = ueNode.Get(0);
-    ue->GetObject<MobilityModel>()->SetPosition(Vector(116, 116, 1.5));
-    ue->GetObject<ConstantVelocityMobilityModel>()->SetVelocity(Vector(0, speed, 0));
+    ue->GetObject<MobilityModel>()->SetPosition(Vector(116, m_startUEPosY, 1.5));
+    ue->GetObject<ConstantVelocityMobilityModel>()->SetVelocity(Vector(0, m_speed, 0));
 
-    Simulator::Schedule(m_reverseTime, &UlSchedulingTest::ReverseUeDirection, this, ue, speed);
-    Simulator::Schedule(MilliSeconds(400),
-                        &UlSchedulingTest::ScheduleNextPacketTransmission,
+    Simulator::Schedule(m_reverseTime, &UlSchedulingTest::ReverseUeDirection, this, ue);
+    Simulator::Schedule(m_nextTime + m_packetPeriod,
+                        &UlSchedulingTest::ShowScheduledNextPacketTransmission,
                         this,
                         ue,
-                        1,
-                        MilliSeconds(400));
+                        1);
 
     // Configure BandwidthParts //
     OperationBandInfo band0;
@@ -118,6 +166,7 @@ UlSchedulingTest::DoRun()
     nrHelper->SetDlErrorModel(errorModel);
 
     nrHelper->SetSchedulerAttribute("EnableHarqReTx", BooleanValue(m_harqActive));
+    NS_LOG_INFO("HARQ is enabled? = " << m_harqActive);
 
     // Setup Channel //
     Ptr<NrChannelHelper> channelHelper = CreateObject<NrChannelHelper>();
@@ -200,9 +249,9 @@ UlSchedulingTest::DoRun()
     serverApps.Add(ulPacket.Install(remoteHost));
 
     // Voice configuration and object creation:
-    ulClient.SetAttribute("MaxPackets", UintegerValue(1000000));
-    ulClient.SetAttribute("Interval", TimeValue(MilliSeconds(50))); // 1
-    ulClient.SetAttribute("PacketSize", UintegerValue(10000));
+    ulClient.SetAttribute("MaxPackets", UintegerValue(1000));
+    ulClient.SetAttribute("Interval", TimeValue(m_packetPeriod)); // m_packetPeriod
+    ulClient.SetAttribute("PacketSize", UintegerValue(m_packetSize));
 
     // The filter for the UL traffic (if it is DL this would be localPort)
     NrEpcTft::PacketFilter ulpf;
@@ -225,8 +274,105 @@ UlSchedulingTest::DoRun()
     serverApps.Stop(simTime);
     clientApps.Stop(simTime);
 
+    FlowMonitorHelper flowmonHelper;
+    NodeContainer endpointNodes;
+    endpointNodes.Add(remoteHost);
+    endpointNodes.Add(ueNode);
+
+    Ptr<ns3::FlowMonitor> monitor = flowmonHelper.Install(endpointNodes);
+    monitor->SetAttribute("DelayBinWidth", DoubleValue(0.001));
+    monitor->SetAttribute("JitterBinWidth", DoubleValue(0.001));
+    monitor->SetAttribute("PacketSizeBinWidth", DoubleValue(20));
+
     Simulator::Stop(simTime);
     Simulator::Run();
+
+    // Print per-flow statistics
+    monitor->CheckForLostPackets();
+    Ptr<Ipv4FlowClassifier> classifier =
+        DynamicCast<Ipv4FlowClassifier>(flowmonHelper.GetClassifier());
+    FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats();
+
+    double averageFlowThroughput = 0.0;
+    double averageFlowDelay = 0.0;
+
+    std::ofstream outFile;
+    std::string simTag = "debug_UlSchedulingTest";
+    std::string outputDir = "./";
+    std::string filename = outputDir + "/" + simTag;
+    outFile.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
+    if (!outFile.is_open())
+    {
+        std::cerr << "Can't open file " << filename << std::endl;
+    }
+
+    outFile.setf(std::ios_base::fixed);
+
+    double flowDuration = (simTime - udpAppStartTimeUl).GetSeconds();
+    for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin();
+         i != stats.end();
+         ++i)
+    {
+        Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow(i->first);
+        std::stringstream protoStream;
+        protoStream << (uint16_t)t.protocol;
+        if (t.protocol == 6)
+        {
+            protoStream.str("TCP");
+        }
+        if (t.protocol == 17)
+        {
+            protoStream.str("UDP");
+        }
+        outFile << "Flow " << i->first << " (" << t.sourceAddress << ":" << t.sourcePort << " -> "
+                << t.destinationAddress << ":" << t.destinationPort << ") proto "
+                << protoStream.str() << "\n";
+        outFile << "  Tx Packets: " << i->second.txPackets << "\n";
+        outFile << "  Tx Bytes:   " << i->second.txBytes << "\n";
+        outFile << "  TxOffered:  " << i->second.txBytes * 8.0 / flowDuration / 1000.0 / 1000.0
+                << " Mbps\n";
+        outFile << "  Rx Bytes:   " << i->second.rxBytes << "\n";
+        if (i->second.rxPackets > 0)
+        {
+            // Measure the duration of the flow from receiver's perspective
+            averageFlowThroughput += i->second.rxBytes * 8.0 / flowDuration / 1000 / 1000;
+            averageFlowDelay += 1000 * i->second.delaySum.GetSeconds() / i->second.rxPackets;
+
+            outFile << "  Throughput: " << i->second.rxBytes * 8.0 / flowDuration / 1000 / 1000
+                    << " Mbps\n";
+            outFile << "  Mean delay:  "
+                    << 1000 * i->second.delaySum.GetSeconds() / i->second.rxPackets << " ms\n";
+            // outFile << "  Mean upt:  " << i->second.uptSum / i->second.rxPackets / 1000/1000 << "
+            // Mbps \n";
+            outFile << "  Mean jitter:  "
+                    << 1000 * i->second.jitterSum.GetSeconds() / i->second.rxPackets << " ms\n";
+        }
+        else
+        {
+            outFile << "  Throughput:  0 Mbps\n";
+            outFile << "  Mean delay:  0 ms\n";
+            outFile << "  Mean jitter: 0 ms\n";
+        }
+        outFile << "  Rx Packets: " << i->second.rxPackets << "\n";
+    }
+
+    double meanFlowThroughput = averageFlowThroughput / stats.size();
+    double meanFlowDelay = averageFlowDelay / stats.size();
+
+    outFile << "\n\n  Mean flow throughput: " << meanFlowThroughput << "\n";
+    outFile << "  Mean flow delay: " << meanFlowDelay << "\n";
+
+    outFile.close();
+    std::ifstream f(filename.c_str());
+    if (f.is_open())
+    {
+        std::cout << f.rdbuf();
+    }
+
+    if (meanFlowThroughput == 0)
+    {
+        NS_TEST_ASSERT_MSG_EQ(false, true, "Some packets have to be received");
+    }
 
     Simulator::Destroy();
 }
