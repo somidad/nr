@@ -739,8 +739,8 @@ KroneckerBeamforming::GetBeamformingVectors(const Ptr<NrSpectrumPhy>& gnbSpectru
                     if (power > maxPower)
                     {
                         maxPower = power;
-                        gnbBfv = {bf, BeamId::GetEmptyBeamId()};
-                        ueBfv = {bfUe, BeamId::GetEmptyBeamId()};
+                        gnbBfv = {bf, BeamId(i, j)};
+                        ueBfv = {bfUe, BeamId(k, m)};
                     }
                 }
             }
@@ -844,7 +844,7 @@ KroneckerQuasiOmniBeamforming::GetBeamformingVectors(const Ptr<NrSpectrumPhy>& g
             if (power > maxPower)
             {
                 maxPower = power;
-                gnbBfv = {bf, BeamId::GetEmptyBeamId()};
+                gnbBfv = {bf, BeamId(i, j)};
             }
         }
     }
