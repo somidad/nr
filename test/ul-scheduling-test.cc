@@ -87,6 +87,29 @@ UlSchedulingTest::ReverseUeDirection(Ptr<Node> ueNode)
 }
 
 void
+UlSchedulingTest::UeMacStateMachine(SfnSf sfn,
+                                    [[maybe_unused]] uint16_t nodeId,
+                                    [[maybe_unused]] uint16_t rnti,
+                                    [[maybe_unused]] uint8_t ccId,
+                                    NrUeMac::SrBsrMachine m_srState)
+{
+    std::string state = "INACTIVE";
+    if (m_srState == 0)
+    {
+        state = "INACTIVE";
+    }
+    else if (m_srState == 1)
+    {
+        state = "TO_SEND";
+    }
+    else
+    {
+        state = "ACTIVE";
+    }
+    NS_LOG_INFO("UlSchedulingTest::UeMacStateMachine: " << state);
+}
+
+void
 UlSchedulingTest::DoRun()
 {
     LogLevel logLevel = (LogLevel)(LOG_PREFIX_FUNC | LOG_PREFIX_TIME | LOG_LEVEL_ALL);
@@ -283,6 +306,13 @@ UlSchedulingTest::DoRun()
     monitor->SetAttribute("DelayBinWidth", DoubleValue(0.001));
     monitor->SetAttribute("JitterBinWidth", DoubleValue(0.001));
     monitor->SetAttribute("PacketSizeBinWidth", DoubleValue(20));
+
+    // UE MAC state machine trace
+    nrHelper->GetUeMac(ueDevices.Get(0), 0)
+        ->TraceConnectWithoutContext("UeMacStateMachineTrace",
+                                     MakeCallback(&UlSchedulingTest::UeMacStateMachine, this));
+
+    nrHelper->EnableTraces();
 
     Simulator::Stop(simTime);
     Simulator::Run();

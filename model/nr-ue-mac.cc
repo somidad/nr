@@ -225,7 +225,11 @@ NrUeMac::GetTypeId()
             .AddTraceSource("RaResponseTimeout",
                             "Trace fired upon RA response timeout",
                             MakeTraceSourceAccessor(&NrUeMac::m_raResponseTimeoutTrace),
-                            "ns3::NrUeMac::RaResponseTimeoutTracedCallback");
+                            "ns3::NrUeMac::RaResponseTimeoutTracedCallback")
+            .AddTraceSource("UeMacStateMachineTrace",
+                            "UE MAC state machine trace",
+                            MakeTraceSourceAccessor(&NrUeMac::m_macUeStateMachine),
+                            "ns3::NrUeMac::UeMacStateMachineTracedCallback");
     return tid;
 }
 
@@ -692,6 +696,7 @@ NrUeMac::ProcessUlDci(const Ptr<NrUlDciMessage>& dciMsg)
     m_ulDci = dciMsg->GetDciInfoElement();
 
     m_macRxedCtrlMsgsTrace(m_currentSlot, GetCellId(), m_rnti, GetBwpId(), dciMsg);
+    m_macUeStateMachine(m_currentSlot, GetCellId(), m_rnti, GetBwpId(), m_srState);
 
     NS_LOG_INFO("UL DCI received, transmit data in slot "
                 << dataSfn << " Harq Process " << +m_ulDci->m_harqProcess << " TBS "

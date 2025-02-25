@@ -5,8 +5,10 @@
 #include "ns3/mobility-model.h"
 #include "ns3/net-device-container.h"
 #include "ns3/node-container.h"
+#include "ns3/nr-module.h"
 #include "ns3/nstime.h"
 #include "ns3/ptr.h"
+#include "ns3/sfnsf.h"
 #include "ns3/test.h"
 
 namespace ns3
@@ -70,6 +72,12 @@ class UlSchedulingTest : public TestCase
 
     void ReverseUeDirection(Ptr<Node> ueNode);
     void ShowScheduledNextPacketTransmission(Ptr<Node> ue, uint32_t ueNum);
+
+    void UeMacStateMachine(SfnSf sfn,
+                           uint16_t nodeId,
+                           uint16_t rnti,
+                           uint8_t ccId,
+                           NrUeMac::SrBsrMachine m_srState);
 
     Time m_simTime;     ///< the simulation time (milliseconds)
     double m_speed;     ///< the speed at which the UE moves (meters/s)

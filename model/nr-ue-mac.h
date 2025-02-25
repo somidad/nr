@@ -123,6 +123,31 @@ class NrUeMac : public Object
     ~NrUeMac() override;
 
     /**
+     * @brief States for the SR/BSR mechanism.
+     *
+     * The SR/BSR mechanism is based on a variable in which
+     * it is saved the state (INACTIVE/ACTIVE).
+     *
+     * The machine is starting from the INACTIVE state. When the RLC notifies
+     * to MAC that there are new bytes in its queue (DoTransmitBufferStatusReport()),
+     * if the machine is in INACTIVE state, it enters the ACTIVE state.
+     * Entering the ACTIVE state means to send a SR, which is enqueued in the PHY layer.
+     * It will suffer slots of CTRL latency. If the state is already ACTIVE, then
+     * the BSR can be sent in the same slot as data. It means that the MAC prepares
+     * together the data and the BSR.
+     *
+     * If the BSR is not sent (we don't have any data in the queue) and we don't
+     * have any more reserved space to send BSR, then the state goes back to the
+     * INACTIVE state.
+     */
+    enum SrBsrMachine : uint8_t
+    {
+        INACTIVE, //!< no SR nor BSR.. initial state
+        TO_SEND,  //!< We have to send the BSR when possible
+        ACTIVE //!< SR or BSR sent; now the source of information is the vector m_bsrReservedSpace
+    };
+
+    /**
      * @brief Set the C MAC SAP user (AKA the RRC representation for the MAC)
      * @param s the SAP pointer
      */
@@ -178,6 +203,20 @@ class NrUeMac : public Object
                                                     const uint16_t rnti,
                                                     const uint8_t bwpId,
                                                     Ptr<NrControlMessage> ctrlMessage);
+
+    /**
+     *  TracedCallback for Ue Mac State Machine.
+     * @param [in] sfnSf the frame number, subframe number, slot number, VarTti
+     * @param [in] nodeId the node ID
+     * @param [in] rnti the RNTI
+     * @param [in] bwpId the BWP ID
+     * @param [in] ctrlMessage the pointer to msg to get the msg type
+     */
+    typedef void (*UeMacStateMachineTracedCallback)(const SfnSf sfnSf,
+                                                    const uint16_t nodeId,
+                                                    const uint16_t rnti,
+                                                    const uint8_t bwpId,
+                                                    const enum SrBsrMachine m_srState);
 
     /**
      * @brief Sets the number of HARQ processes.
@@ -421,31 +460,6 @@ class NrUeMac : public Object
     std::unordered_map<uint8_t, NrMacSapProvider::BufferStatusReportParameters>
         m_ulBsrReceived; //!< BSR received from RLC (the last one)
 
-    /**
-     * @brief States for the SR/BSR mechanism.
-     *
-     * The SR/BSR mechanism is based on a variable in which
-     * it is saved the state (INACTIVE/ACTIVE).
-     *
-     * The machine is starting from the INACTIVE state. When the RLC notifies
-     * to MAC that there are new bytes in its queue (DoTransmitBufferStatusReport()),
-     * if the machine is in INACTIVE state, it enters the ACTIVE state.
-     * Entering the ACTIVE state means to send a SR, which is enqueued in the PHY layer.
-     * It will suffer slots of CTRL latency. If the state is already ACTIVE, then
-     * the BSR can be sent in the same slot as data. It means that the MAC prepares
-     * together the data and the BSR.
-     *
-     * If the BSR is not sent (we don't have any data in the queue) and we don't
-     * have any more reserved space to send BSR, then the state goes back to the
-     * INACTIVE state.
-     */
-    enum SrBsrMachine : uint8_t
-    {
-        INACTIVE, //!< no SR nor BSR.. initial state
-        TO_SEND,  //!< We have to send the BSR when possible
-        ACTIVE //!< SR or BSR sent; now the source of information is the vector m_bsrReservedSpace
-    };
-
     SrBsrMachine m_srState{INACTIVE}; //!< Current state for the SR/BSR machine.
 
     Ptr<UniformRandomVariable> m_raPreambleUniformVariable;
@@ -501,6 +515,12 @@ class NrUeMac : public Object
      * and the max limit of preamble transmission.
      */
     TracedCallback<uint64_t, bool, uint8_t, uint8_t> m_raResponseTimeoutTrace;
+
+    /**
+     * Trace information regarding Ue MAC Received Control Messages
+     * Frame number, Subframe number, slot, VarTtti, nodeId, rnti, bwpId, UE current state
+     */
+    TracedCallback<SfnSf, uint16_t, uint16_t, uint8_t, SrBsrMachine> m_macUeStateMachine;
 
     void StartWaitingForRaResponse();
     bool m_rachConfigured = false;                ///< is RACH configured?
