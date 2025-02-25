@@ -70,6 +70,7 @@ class NrMacSchedulerLC
     uint8_t m_qci{0};                //!< QoS Class Identifier of the flow
     uint8_t m_priority{0}; //!< the priority associated with the QCI of the flow 3GPP 23.203
     uint64_t m_eRabGuaranteedBitrateDl{UINT64_MAX}; //!< ERAB guaranteed bit rate DL
+    bool m_srActive{false};                         //!< True when gNB allocates 12 bytes for SR
 };
 
 /**
@@ -152,7 +153,7 @@ class NrMacSchedulerLCG
      *
      * For UL, only 1 LC per LCG is supported.
      */
-    void UpdateInfo(uint32_t lcgQueueSize);
+    void UpdateInfo(uint32_t lcgQueueSize, bool srActive = false);
     /**
      * @brief Get the total size of the LCG
      * @return the total size of the LCG

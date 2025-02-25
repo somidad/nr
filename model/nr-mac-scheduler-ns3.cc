@@ -1738,7 +1738,7 @@ NrMacSchedulerNs3::DoScheduleUlSr(PointInFTPlane* spoint, const std::list<uint16
         for (auto& ulLcg : NrMacSchedulerUeInfo::GetUlLCG(m_ueMap.at(v)))
         {
             NS_LOG_DEBUG("Assigning 12 bytes to UE " << v << " because of a SR");
-            ulLcg.second->UpdateInfo(12);
+            ulLcg.second->UpdateInfo(12, true);
         }
     }
 }
