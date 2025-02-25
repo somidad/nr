@@ -708,17 +708,16 @@ KroneckerBeamforming::GetBeamformingVectors(const Ptr<NrSpectrumPhy>& gnbSpectru
     {
         for (size_t m = 0; m < m_rowTxBeamAngles.size(); m++)
         {
+            auto bfUe =
+                CreateKroneckerBfv(ueSpectrumPhy->GetAntenna()->GetObject<UniformPlanarArray>(),
+                                   m_rowTxBeamAngles[m],
+                                   m_colTxBeamAngles[k]);
+            ueSpectrumPhy->GetAntenna()->GetObject<UniformPlanarArray>()->SetBeamformingVector(
+                bfUe);
             for (size_t i = 0; i < m_colRxBeamAngles.size(); i++)
             {
                 for (size_t j = 0; j < m_rowRxBeamAngles.size(); j++)
                 {
-                    auto bfUe = CreateKroneckerBfv(
-                        ueSpectrumPhy->GetAntenna()->GetObject<UniformPlanarArray>(),
-                        m_rowTxBeamAngles[m],
-                        m_colTxBeamAngles[k]);
-                    ueSpectrumPhy->GetAntenna()
-                        ->GetObject<UniformPlanarArray>()
-                        ->SetBeamformingVector(bfUe);
                     auto bf = CreateKroneckerBfv(
                         gnbSpectrumPhy->GetAntenna()->GetObject<UniformPlanarArray>(),
                         m_rowRxBeamAngles[j],
@@ -734,8 +733,7 @@ KroneckerBeamforming::GetBeamformingVectors(const Ptr<NrSpectrumPhy>& gnbSpectru
                         gnbSpectrumPhy->GetAntenna()->GetObject<UniformPlanarArray>(),
                         ueSpectrumPhy->GetAntenna()->GetObject<UniformPlanarArray>());
 
-                    size_t nbands = rxParams->psd->GetSpectrumModel()->GetNumBands();
-                    double power = Sum(*(rxParams->psd)) / nbands;
+                    double power = Sum(*(rxParams->psd));
                     if (power > maxPower)
                     {
                         maxPower = power;
@@ -839,8 +837,7 @@ KroneckerQuasiOmniBeamforming::GetBeamformingVectors(const Ptr<NrSpectrumPhy>& g
                 gnbSpectrumPhy->GetAntenna()->GetObject<UniformPlanarArray>(),
                 ueSpectrumPhy->GetAntenna()->GetObject<UniformPlanarArray>());
 
-            size_t nbands = rxParams->psd->GetSpectrumModel()->GetNumBands();
-            double power = Sum(*(rxParams->psd)) / nbands;
+            double power = Sum(*(rxParams->psd));
             if (power > maxPower)
             {
                 maxPower = power;
