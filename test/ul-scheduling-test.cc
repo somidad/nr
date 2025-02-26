@@ -14,8 +14,14 @@
 #include "ns3/packet.h"
 #include "ns3/point-to-point-helper.h"
 
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+
+
 namespace ns3
 {
+namespace fs = std::filesystem;
 
 NS_LOG_COMPONENT_DEFINE("UlSchedulingTestCase");
 
@@ -69,9 +75,9 @@ void
 UlSchedulingTest::ShowScheduledNextPacketTransmission(Ptr<Node> ue, uint32_t ueNum)
 {
     Vector currentPosition = ue->GetObject<MobilityModel>()->GetPosition();
+    m_nextTime += m_packetPeriod;
     NS_LOG_INFO("Current position =" << currentPosition
                                      << " and Next packet transmission time = " << m_nextTime);
-    m_nextTime += m_packetPeriod;
     Simulator::Schedule(m_packetPeriod,
                         &UlSchedulingTest::ShowScheduledNextPacketTransmission,
                         this,
@@ -87,18 +93,78 @@ UlSchedulingTest::ReverseUeDirection(Ptr<Node> ueNode)
 }
 
 void
+UlSchedulingTest::CreateAndStoreFileForResults(const std::string& basePath,
+                                               uint16_t rnti,
+                                               SfnSf sfn,
+                                               std::string srState)
+{
+    fs::path resultsPath = basePath + "/results";
+    fs::path testUlTxPath = resultsPath / "test_ulTX";
+
+    // Create results and test_ulTX directories if they don't exist in order to store this test
+    // results
+    if (!fs::exists(resultsPath))
+    {
+        fs::create_directory(resultsPath);
+    }
+    if (!fs::exists(testUlTxPath))
+    {
+        fs::create_directory(testUlTxPath);
+    }
+
+    fs::path filePath = testUlTxPath / (std::to_string(rnti) + ".txt");
+
+    // True if it is the first time of creating the file for current rnti
+    bool firstTime = m_storedRntis.find(rnti) == m_storedRntis.end();
+    if (firstTime)
+    {
+        m_storedRntis.insert(rnti);
+        if (fs::exists(filePath))
+        {
+            fs::remove(filePath);
+        }
+    }
+
+    if (!fs::exists(filePath))
+    {
+        std::ofstream file(filePath);
+        if (file)
+        {
+            file << "This file stores information of RNTI: " << rnti << "\n";
+        }
+        else
+        {
+            std::cerr << "Error (can't create the file)" << filePath << std::endl;
+        }
+    }
+
+    std::ofstream file(filePath, std::ios::app);
+    if (file)
+    {
+        if (firstTime)
+        {
+            file << "\t"
+                 << " m_srState "
+                 << "\n";
+        }
+        file << sfn << "\t" << srState << "\n";
+    }
+}
+
+void
 UlSchedulingTest::UeMacStateMachine(SfnSf sfn,
                                     [[maybe_unused]] uint16_t nodeId,
-                                    [[maybe_unused]] uint16_t rnti,
+                                    uint16_t rnti,
                                     [[maybe_unused]] uint8_t ccId,
-                                    NrUeMac::SrBsrMachine m_srState)
+                                    NrUeMac::SrBsrMachine srState)
 {
+    std::string basePath = "contrib/nr";
     std::string state = "INACTIVE";
-    if (m_srState == 0)
+    if (srState == 0)
     {
         state = "INACTIVE";
     }
-    else if (m_srState == 1)
+    else if (srState == 1)
     {
         state = "TO_SEND";
     }
@@ -106,7 +172,8 @@ UlSchedulingTest::UeMacStateMachine(SfnSf sfn,
     {
         state = "ACTIVE";
     }
-    NS_LOG_INFO("UlSchedulingTest::UeMacStateMachine: " << state);
+
+    CreateAndStoreFileForResults(basePath, rnti, sfn, state);
 }
 
 void

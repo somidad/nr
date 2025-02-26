@@ -73,6 +73,10 @@ class UlSchedulingTest : public TestCase
     void ReverseUeDirection(Ptr<Node> ueNode);
     void ShowScheduledNextPacketTransmission(Ptr<Node> ue, uint32_t ueNum);
 
+    void CreateAndStoreFileForResults(const std::string& basePath,
+                                      uint16_t rnti,
+                                      SfnSf sfn,
+                                      std::string srState);
     void UeMacStateMachine(SfnSf sfn,
                            uint16_t nodeId,
                            uint16_t rnti,
@@ -90,6 +94,8 @@ class UlSchedulingTest : public TestCase
     bool m_harqActive; ///< true if HARQ is active
 
     Time m_nextTime; ///< the next packet transmission time
+
+    std::set<uint16_t> m_storedRntis;
 };
 
 } // namespace ns3
