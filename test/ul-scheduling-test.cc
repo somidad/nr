@@ -18,7 +18,6 @@
 #include <fstream>
 #include <iostream>
 
-
 namespace ns3
 {
 namespace fs = std::filesystem;
@@ -28,19 +27,15 @@ NS_LOG_COMPONENT_DEFINE("UlSchedulingTestCase");
 UlSchedulingTestSuite::UlSchedulingTestSuite()
     : TestSuite("nr-ul-scheduling-test", Type::SYSTEM)
 {
-    // Test with realistic values
     // The UE starts from position 60 and moves along the Y-axis at a speed of 5 m/s. It transmits a
-    // packet every 2 seconds. After 10 seconds, it begins moving back toward the gNB
-    AddTestCase(new UlSchedulingTest(MilliSeconds(10500),
-                                     false,
-                                     60,
-                                     MilliSeconds(20000),
-                                     5,
-                                     Seconds(2),
-                                     1250),
-                Duration::QUICK);
+    // packet every 2 seconds. After 10.5 seconds, it begins moving back toward the gNB
+    AddTestCase(
+        new UlSchedulingTest(1, MilliSeconds(10500), false, 60, Seconds(20), 5, Seconds(2), 1250),
+        Duration::QUICK);
 
-    // The rest of the test uses non-realistic values in order to speed up the simulation time
+    AddTestCase(
+        new UlSchedulingTest(2, MilliSeconds(10500), true, 60, Seconds(20), 5, Seconds(2), 1250),
+        Duration::QUICK);
 }
 
 /**
@@ -49,7 +44,8 @@ UlSchedulingTestSuite::UlSchedulingTestSuite()
  */
 static UlSchedulingTestSuite m_UlSchedulingTestSuite; //!< Nr test suite
 
-UlSchedulingTest::UlSchedulingTest(Time reverseTime,
+UlSchedulingTest::UlSchedulingTest(uint8_t testNum,
+                                   Time reverseTime,
                                    bool harqActive,
                                    uint32_t startUEPosY,
                                    Time simTime,
@@ -58,6 +54,7 @@ UlSchedulingTest::UlSchedulingTest(Time reverseTime,
                                    uint32_t packetSize)
     : TestCase("UL transmissions Test Case")
 {
+    m_testNumber = testNum;
     m_reverseTime = reverseTime;
     m_harqActive = harqActive;
     m_startUEPosY = startUEPosY;
@@ -93,31 +90,25 @@ UlSchedulingTest::ReverseUeDirection(Ptr<Node> ueNode)
 }
 
 void
-UlSchedulingTest::CreateAndStoreFileForResults(const std::string& basePath,
-                                               uint16_t rnti,
-                                               SfnSf sfn,
-                                               std::string srState)
+UlSchedulingTest::CreateAndStoreFileForResults(
+    const std::string& basePath,
+    uint16_t rnti,
+    SfnSf sfn,
+    std::string srState,
+    std::unordered_map<uint8_t, NrMacSapProvider::BufferStatusReportParameters> m_ulBsrReceived)
 {
-    fs::path resultsPath = basePath + "/results";
-    fs::path testUlTxPath = resultsPath / "test_ulTX";
+    fs::path testUlTxPath = fs::path(basePath) / "results" / "test_ulTx";
+    fs::create_directories(testUlTxPath);
 
-    // Create results and test_ulTX directories if they don't exist in order to store this test
-    // results
-    if (!fs::exists(resultsPath))
-    {
-        fs::create_directory(resultsPath);
-    }
-    if (!fs::exists(testUlTxPath))
-    {
-        fs::create_directory(testUlTxPath);
-    }
+    fs::path filePath = testUlTxPath / ("test" + std::to_string(m_testNumber) + "_" +
+                                        std::to_string(rnti) + ".txt");
 
-    fs::path filePath = testUlTxPath / (std::to_string(rnti) + ".txt");
-
-    // True if it is the first time of creating the file for current rnti
-    bool firstTime = m_storedRntis.find(rnti) == m_storedRntis.end();
+    // True if it is the first time of creating the file for current testNumber and rnti
+    bool firstTime = m_storedRntis.find(rnti) == m_storedRntis.end() &&
+                     m_storedTestNum.find(m_testNumber) == m_storedTestNum.end();
     if (firstTime)
     {
+        m_storedTestNum.insert(m_testNumber);
         m_storedRntis.insert(rnti);
         if (fs::exists(filePath))
         {
@@ -125,44 +116,62 @@ UlSchedulingTest::CreateAndStoreFileForResults(const std::string& basePath,
         }
     }
 
-    if (!fs::exists(filePath))
+    std::ofstream file(filePath, std::ios::app);
+    if (!file)
     {
-        std::ofstream file(filePath);
-        if (file)
-        {
-            file << "This file stores information of RNTI: " << rnti << "\n";
-        }
-        else
-        {
-            std::cerr << "Error (can't create the file)" << filePath << std::endl;
-        }
+        std::cerr << "Error (can't create the file)" << filePath << std::endl;
+        return;
     }
 
-    std::ofstream file(filePath, std::ios::app);
-    if (file)
+    if (firstTime)
     {
-        if (firstTime)
-        {
-            file << "\t"
-                 << " m_srState "
-                 << "\n";
-        }
-        file << sfn << "\t" << srState << "\n";
+        file << "Sfnsf\t\t\t state\t\t LCID\t TxQueue(UE)\t SendBSR(UE)\t DataLcg(gNB)\n";
     }
+
+    uint8_t lcid = 0;
+    uint32_t txQueue = 0;
+
+    for (auto it = m_ulBsrReceived.begin(); it != m_ulBsrReceived.end(); it++)
+    {
+        lcid = it->first;
+        txQueue = (*it).second.txQueueSize;
+    }
+
+    if (m_ulSfn.find(rnti) != m_ulSfn.end())
+    {
+        SfnSf lastSfn = m_ulSfn[rnti];
+        lastSfn.Add(200);
+        if (lastSfn < sfn)
+        {
+            file << "\n"; // Separate output data for each packet
+        }
+    }
+    m_ulSfn[rnti] = sfn;
+    file << sfn << "\t UE:" << srState << "\t" << uint32_t(lcid) << "\t" << uint32_t(txQueue)
+         << "\n";
 }
 
 void
-UlSchedulingTest::UeMacStateMachine(SfnSf sfn,
-                                    [[maybe_unused]] uint16_t nodeId,
-                                    uint16_t rnti,
-                                    [[maybe_unused]] uint8_t ccId,
-                                    NrUeMac::SrBsrMachine srState)
+UlSchedulingTest::UeMacStateMachine(
+    SfnSf sfn,
+    [[maybe_unused]] uint16_t nodeId,
+    uint16_t rnti,
+    [[maybe_unused]] uint8_t ccId,
+    NrUeMac::SrBsrMachine srState,
+    std::unordered_map<uint8_t, NrMacSapProvider::BufferStatusReportParameters> m_ulBsrReceived,
+    int retxActive,
+    std::string funcName)
 {
     std::string basePath = "contrib/nr";
     std::string state = "INACTIVE";
     if (srState == 0)
     {
-        state = "INACTIVE";
+        // TODO The UE transmits a BSR every time it receives a grant, even if it has no more data
+        // to send. Therefore, when the gNB sends a grant that empties the UE's buffer, the UE
+        // changes to the INACTIVE state but still transmits a BSR. This behavior should be
+        // considered erroneous, as the UE is already in INACTIVE and should be waiting to receive a
+        // new message instead.
+        state = (funcName == "SendBufferStatusReport") ? "INACTIVE- Send BSR (ERROR)" : "INACTIVE";
     }
     else if (srState == 1)
     {
@@ -170,10 +179,34 @@ UlSchedulingTest::UeMacStateMachine(SfnSf sfn,
     }
     else
     {
-        state = "ACTIVE";
+        if (retxActive == 0)
+        {
+            state =
+                (funcName == "DoTransmitBufferStatusReport") ? "ACTIVE(ReTxSR)" : "ACTIVE(HARQ)";
+        }
+        else
+        {
+            if (funcName == "DoTransmitBufferStatusReport")
+            {
+                state = "ACTIVE";
+            }
+            else if (funcName == "DoSlotIndication")
+            {
+                state = "ACTIVE(waitingGrant)";
+            }
+            else if (funcName == "SendBufferStatusReport")
+            {
+                // TODO The UE should send a BSR only if new data has arrived in the buffer and the
+                // gNB is unaware of it
+                state = "ACTIVE(sendBSR) ";
+            }
+            else
+            {
+                state = "ACTIVE(grantRX)";
+            }
+        }
     }
-
-    CreateAndStoreFileForResults(basePath, rnti, sfn, state);
+    CreateAndStoreFileForResults(basePath, rnti, sfn, state, m_ulBsrReceived);
 }
 
 void

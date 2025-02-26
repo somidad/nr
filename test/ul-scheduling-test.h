@@ -47,6 +47,7 @@ class UlSchedulingTest : public TestCase
     /**
      * @brief UlSchedulingTest is a test constructor which is used to initialise
      *        the test parameters.
+     * @param testNumber identifies the number of the test case
      * @param reverseTime the time instant when the UE starts approaching the gNB
      * @param harqActive true when HARQ is active
      * @param startUEPosY the starting position of the UE
@@ -55,7 +56,8 @@ class UlSchedulingTest : public TestCase
      * @param packetPeriod the packet transmission periodicity of the UE
      * @param packetSize the size of the transmitted packet
      */
-    UlSchedulingTest(Time reverseTime,
+    UlSchedulingTest(uint8_t testNumber,
+                     Time reverseTime,
                      bool harqActive,
                      uint32_t startUEPosY,
                      Time simTime,
@@ -73,29 +75,40 @@ class UlSchedulingTest : public TestCase
     void ReverseUeDirection(Ptr<Node> ueNode);
     void ShowScheduledNextPacketTransmission(Ptr<Node> ue, uint32_t ueNum);
 
-    void CreateAndStoreFileForResults(const std::string& basePath,
-                                      uint16_t rnti,
-                                      SfnSf sfn,
-                                      std::string srState);
-    void UeMacStateMachine(SfnSf sfn,
-                           uint16_t nodeId,
-                           uint16_t rnti,
-                           uint8_t ccId,
-                           NrUeMac::SrBsrMachine m_srState);
+    void CreateAndStoreFileForResults(
+        const std::string& basePath,
+        uint16_t rnti,
+        SfnSf sfn,
+        std::string srState,
+        std::unordered_map<uint8_t, NrMacSapProvider::BufferStatusReportParameters>
+            m_ulBsrReceived);
 
-    Time m_simTime;     ///< the simulation time (milliseconds)
-    double m_speed;     ///< the speed at which the UE moves (meters/s)
-    Time m_reverseTime; ///< time instant when the UE starts approaching the gNB (ms)
+    void UeMacStateMachine(
+        SfnSf sfn,
+        uint16_t nodeId,
+        uint16_t rnti,
+        uint8_t ccId,
+        NrUeMac::SrBsrMachine m_srState,
+        std::unordered_map<uint8_t, NrMacSapProvider::BufferStatusReportParameters> m_ulBsrReceived,
+        int retxActive,
+        std::string funcName);
 
+    uint8_t m_testNumber;   ///< The identification number of the test case
+    Time m_simTime;         ///< the simulation time (milliseconds)
+    double m_speed;         ///< the speed at which the UE moves (meters/s)
+    Time m_reverseTime;     ///< time instant when the UE starts approaching the gNB (ms)
     uint32_t m_startUEPosY; ///< the starting position of the UE (meters)
     Time m_packetPeriod;    ///< the periodicity of packet transmission (ms)
     uint32_t m_packetSize;  ///< the size of the transmitted packet
+    bool m_harqActive;      ///< true if HARQ is active
+    Time m_nextTime;        ///< the next packet transmission time
 
-    bool m_harqActive; ///< true if HARQ is active
-
-    Time m_nextTime; ///< the next packet transmission time
-
+    /*
+     * Data to create the test output file
+     */
     std::set<uint16_t> m_storedRntis;
+    std::set<uint8_t> m_storedTestNum;
+    std::unordered_map<uint16_t, SfnSf> m_ulSfn;
 };
 
 } // namespace ns3

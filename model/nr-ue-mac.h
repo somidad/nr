@@ -210,13 +210,20 @@ class NrUeMac : public Object
      * @param [in] nodeId the node ID
      * @param [in] rnti the RNTI
      * @param [in] bwpId the BWP ID
-     * @param [in] ctrlMessage the pointer to msg to get the msg type
+     * @param [in] srState the UE state within the state machine
+     * @param [in] ulBsrReceived the amount of data stored in the buffer
+     * @param [in] retx 1 if it is new data, 0 if a retransmission is needed
+     * @param [in] nameFunc the name of the function where the trace is called
      */
-    typedef void (*UeMacStateMachineTracedCallback)(const SfnSf sfnSf,
-                                                    const uint16_t nodeId,
-                                                    const uint16_t rnti,
-                                                    const uint8_t bwpId,
-                                                    const enum SrBsrMachine m_srState);
+    typedef void (*UeMacStateMachineTracedCallback)(
+        const SfnSf sfnSf,
+        const uint16_t nodeId,
+        const uint16_t rnti,
+        const uint8_t bwpId,
+        const enum SrBsrMachine srState,
+        std::unordered_map<uint8_t, NrMacSapProvider::BufferStatusReportParameters> ulBsrReceived,
+        int retx,
+        std::string nameFunc);
 
     /**
      * @brief Sets the number of HARQ processes.
@@ -518,9 +525,18 @@ class NrUeMac : public Object
 
     /**
      * Trace information regarding Ue MAC Received Control Messages
-     * Frame number, Subframe number, slot, VarTtti, nodeId, rnti, bwpId, UE current state
+     * Frame number, Subframe number, slot, VarTtti, nodeId, rnti, bwpId, UE current state,
+     * BSR data, retransmission, name of the function
      */
-    TracedCallback<SfnSf, uint16_t, uint16_t, uint8_t, SrBsrMachine> m_macUeStateMachine;
+    TracedCallback<SfnSf,
+                   uint16_t,
+                   uint16_t,
+                   uint8_t,
+                   SrBsrMachine,
+                   std::unordered_map<uint8_t, NrMacSapProvider::BufferStatusReportParameters>,
+                   int,
+                   std::string>
+        m_macUeStateMachine;
 
     void StartWaitingForRaResponse();
     bool m_rachConfigured = false;                ///< is RACH configured?
