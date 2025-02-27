@@ -428,6 +428,7 @@ set(header_files
     utils/channels/nyu/nyu-spectrum-propagation-loss-model.h
     utils/channels/nyu/nyu-propagation-loss-model.h
     utils/channels/nyu/nyu-channel-model.h
+    utils/fast-fading-constant-position-mobility-model.h
 )
 
 set(test_sources
