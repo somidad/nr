@@ -125,15 +125,13 @@ UlSchedulingTest::CreateAndStoreFileForResults(
 
     if (firstTime)
     {
-        file << "Sfnsf\t\t\t state\t\t LCID\t TxQueue(UE)\t SendBSR(UE)\t DataLcg(gNB)\n";
+        file << "Sfnsf\t\t\t\t state\t\t\t Queue UL DATA\n";
     }
 
-    uint8_t lcid = 0;
     uint32_t txQueue = 0;
 
     for (auto it = m_ulBsrReceived.begin(); it != m_ulBsrReceived.end(); it++)
     {
-        lcid = it->first;
         txQueue = (*it).second.txQueueSize;
     }
 
@@ -147,8 +145,7 @@ UlSchedulingTest::CreateAndStoreFileForResults(
         }
     }
     m_ulSfn[rnti] = sfn;
-    file << sfn << "\t UE:" << srState << "\t" << uint32_t(lcid) << "\t" << uint32_t(txQueue)
-         << "\n";
+    file << sfn << "\t UE:" << srState << "\t" << uint32_t(txQueue) << "\n";
 }
 
 void
@@ -192,7 +189,7 @@ UlSchedulingTest::UeMacStateMachine(
             }
             else if (funcName == "DoSlotIndication")
             {
-                state = "ACTIVE(waitingGrant)";
+                state = "ACTIVE(waitGrant)";
             }
             else if (funcName == "SendBufferStatusReport")
             {
@@ -209,6 +206,56 @@ UlSchedulingTest::UeMacStateMachine(
     CreateAndStoreFileForResults(basePath, rnti, sfn, state, m_ulBsrReceived);
 }
 
+std::ofstream
+UlSchedulingTest::OpenResultFile(uint16_t testNumber, uint16_t rnti)
+{
+    std::string basePath = "contrib/nr";
+    fs::path testUlTxPath = fs::path(basePath) / "results" / "test_ulTx";
+    fs::path filePath =
+        testUlTxPath / ("test" + std::to_string(testNumber) + "_" + std::to_string(rnti) + ".txt");
+
+    std::ofstream file(filePath, std::ios::app);
+    if (!file)
+    {
+        std::cerr << "Error (can't open the file): " << filePath << std::endl;
+    }
+    return file;
+}
+
+void
+UlSchedulingTest::gNBUlToSch(NrSchedulingCallbackInfo data)
+{
+    std::ofstream file = OpenResultFile(m_testNumber, data.m_rnti);
+    if (!file)
+        return;
+
+    // TODO The Sfn used to schedule a grant transmission from the gNB to the UE appears later than
+    // the moment the UE receives the grant.
+    file << "FrameNum: " << data.m_frameNum << " SubFrameNum: " << uint32_t(data.m_subframeNum)
+         << " SlotNum:" << data.m_slotNum << "\t gNB:ToSch \t\t " << data.m_tbSize << " \n";
+}
+
+void
+UlSchedulingTest::gNBRxCtrl(SfnSf sfn,
+                            [[maybe_unused]] uint16_t nodeId,
+                            uint16_t rnti,
+                            [[maybe_unused]] uint8_t ccId,
+                            Ptr<const NrControlMessage> msg)
+{
+    std::ofstream file = OpenResultFile(m_testNumber, rnti);
+    if (!file)
+        return;
+
+    if (msg->GetMessageType() == NrControlMessage::BSR)
+    {
+        file << sfn << "\t gNB:RxBSR \n";
+    }
+    else if (msg->GetMessageType() == NrControlMessage::SR)
+    {
+        file << sfn << "\t gNB:RxSR \n";
+    }
+}
+
 void
 UlSchedulingTest::DoRun()
 {
@@ -221,7 +268,7 @@ UlSchedulingTest::DoRun()
     LogComponentEnable("UlSchedulingTestCase", logLevel1);
     LogComponentEnable("UlSchedulingTestCase", logLevel2);
 
-    LogComponentEnable("NrUeMac", logLevel1);
+    /*LogComponentEnable("NrUeMac", logLevel1);
     LogComponentEnable("NrUeMac", logLevel2);
     LogComponentEnable("NrRlcUm", logLevel1);
     LogComponentEnable("NrRlcUm", logLevel2);
@@ -231,7 +278,7 @@ UlSchedulingTest::DoRun()
     LogComponentEnable("NrGnbMac", logLevel1);
     LogComponentEnable("NrGnbMac", logLevel2);
     LogComponentEnable("NrMacSchedulerNs3", logLevel1);
-    LogComponentEnable("NrMacSchedulerNs3", logLevel2);
+    LogComponentEnable("NrMacSchedulerNs3", logLevel2);*/
 
     // Simulation parameters //
     Time simTime = m_simTime;
@@ -411,6 +458,13 @@ UlSchedulingTest::DoRun()
     nrHelper->GetUeMac(ueDevices.Get(0), 0)
         ->TraceConnectWithoutContext("UeMacStateMachineTrace",
                                      MakeCallback(&UlSchedulingTest::UeMacStateMachine, this));
+    // gNB MAC info traces
+    nrHelper->GetGnbMac(gnbDevices.Get(0), 0)
+        ->TraceConnectWithoutContext("UlScheduling",
+                                     MakeCallback(&UlSchedulingTest::gNBUlToSch, this));
+    nrHelper->GetGnbMac(gnbDevices.Get(0), 0)
+        ->TraceConnectWithoutContext("GnbMacRxedCtrlMsgsTrace",
+                                     MakeCallback(&UlSchedulingTest::gNBRxCtrl, this));
 
     nrHelper->EnableTraces();
 

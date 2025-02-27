@@ -93,6 +93,15 @@ class UlSchedulingTest : public TestCase
         int retxActive,
         std::string funcName);
 
+    std::ofstream OpenResultFile(uint16_t testNumber, uint16_t rnti);
+    void gNBRxCtrl(SfnSf sfn,
+                   uint16_t nodeId,
+                   uint16_t rnti,
+                   uint8_t bwpId,
+                   Ptr<const NrControlMessage> msg);
+
+    void gNBUlToSch(NrSchedulingCallbackInfo);
+
     uint8_t m_testNumber;   ///< The identification number of the test case
     Time m_simTime;         ///< the simulation time (milliseconds)
     double m_speed;         ///< the speed at which the UE moves (meters/s)
