@@ -4,14 +4,18 @@
 
 #pragma once
 
+#include "nr-mac-scheduler-ofdma-symbol-per-beam.h"
 #include "nr-mac-scheduler-tdma.h"
 
 #include "ns3/traced-value.h"
 
 #include <set>
+#include <unordered_set>
 
 namespace ns3
 {
+class NrMacSchedulerOfdmaSymbolPerBeam;
+class NrSchedOfdmaSymbolPerBeamTestCase;
 
 /**
  * @ingroup scheduler
@@ -93,10 +97,27 @@ class NrMacSchedulerOfdma : public NrMacSchedulerTdma
 
     void ChangeUlBeam(PointInFTPlane* spoint, uint32_t symOfBeam) const override;
 
+    /**
+     * @brief Calculate the number of symbols to assign to each beam by calling using the technique
+     * selected in m_symPerBeamType
+     * @param symAvail Number of available symbols
+     * @param activeDl Map of active DL UE and their beam
+     * @return symbols per beam allocation map
+     */
     NrMacSchedulerOfdma::BeamSymbolMap GetSymPerBeam(uint32_t symAvail,
                                                      const ActiveUeMap& activeDl) const;
 
     uint8_t GetTpc() const override;
+
+    /**
+     * @brief Enumeration of techniques to distribute the available symbols to the active beams
+     */
+    enum class SymPerBeamType
+    {
+        LOAD_BASED, //!< Distributes symbols to beams proportionally to the buffer size of its users
+        ROUND_ROBIN, //!< Distributes all symbols to the first active beam in the m_rrBeams queue
+        PROPORTIONAL_FAIR //!< Distributes symbols to beams proportionally to mean achievable rate
+    };
 
   private:
     /**
@@ -201,7 +222,13 @@ class NrMacSchedulerOfdma : public NrMacSchedulerTdma
         FTResources& assignedResources,
         std::vector<bool>& availableRbgs) const;
 
+    void SetSymPerBeamType(SymPerBeamType type);
     TracedValue<uint32_t>
         m_tracedValueSymPerBeam; //!< Variable to trace symbols per beam allocation
+
+    SymPerBeamType m_symPerBeamType; //!< Holds the type of symbol scheduling done for each beam
+    Ptr<NrMacSchedulerOfdmaSymbolPerBeam> m_symPerBeam; //!< Holds a symbol per beam allocator
+    /// Make it friend of the test case, so that the test case can access m_symPerBeam
+    friend class NrSchedOfdmaSymbolPerBeamTestCase;
 };
 } // namespace ns3

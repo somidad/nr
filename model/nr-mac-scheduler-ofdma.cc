@@ -28,6 +28,16 @@ NrMacSchedulerOfdma::GetTypeId()
     static TypeId tid =
         TypeId("ns3::NrMacSchedulerOfdma")
             .SetParent<NrMacSchedulerTdma>()
+            .AddAttribute("SymPerBeamType",
+                          "Type of symbol allocation per beam",
+                          EnumValue(SymPerBeamType::LOAD_BASED),
+                          MakeEnumAccessor<SymPerBeamType>(&NrMacSchedulerOfdma::SetSymPerBeamType),
+                          MakeEnumChecker<SymPerBeamType>(SymPerBeamType::LOAD_BASED,
+                                                          "LOAD_BASED",
+                                                          SymPerBeamType::ROUND_ROBIN,
+                                                          "ROUND_ROBIN",
+                                                          SymPerBeamType::PROPORTIONAL_FAIR,
+                                                          "PROPORTIONAL_FAIR"))
             .AddTraceSource(
                 "SymPerBeam",
                 "Number of assigned symbol per beam. Gets called every time an assignment is made",
@@ -41,75 +51,40 @@ NrMacSchedulerOfdma::NrMacSchedulerOfdma()
 {
 }
 
-/**
- *
- * @brief Calculate the number of symbols to assign to each beam
- * @param symAvail Number of available symbols
- * @param activeDl Map of active DL UE and their beam
- *
- * Each beam has a different requirement in terms of byte that should be
- * transmitted with that beam. That requirement depends on the number of UE
- * that are inside such beam, and how many bytes they have to transmit.
- *
- * For the beam \f$ b \f$, the number of assigned symbols is the following:
- *
- * \f$ sym_{b} = BufSize(b) * \frac{symAvail}{BufSizeTotal} \f$
- */
+void
+NrMacSchedulerOfdma::SetSymPerBeamType(SymPerBeamType type)
+{
+    m_symPerBeamType = type;
+    switch (m_symPerBeamType)
+    {
+    case SymPerBeamType::PROPORTIONAL_FAIR:
+        m_symPerBeam = CreateObject<NrMacSchedulerOfdmaSymbolPerBeamPF>(
+            [this]() { return m_dlAmc; },
+            std::bind_front(&NrMacSchedulerOfdma::GetBandwidthInRbg, this));
+        break;
+    case SymPerBeamType::ROUND_ROBIN:
+        m_symPerBeam = CreateObject<NrMacSchedulerOfdmaSymbolPerBeamRR>();
+        break;
+    case SymPerBeamType::LOAD_BASED:
+        m_symPerBeam = CreateObject<NrMacSchedulerOfdmaSymbolPerBeamLB>();
+        break;
+    default:
+        NS_ABORT_MSG("Invalid NrMacSchedulerOfdma::m_symPerBeamType");
+    }
+}
+
 NrMacSchedulerOfdma::BeamSymbolMap
 NrMacSchedulerOfdma::GetSymPerBeam(uint32_t symAvail,
                                    const NrMacSchedulerNs3::ActiveUeMap& activeDl) const
 {
-    NS_LOG_FUNCTION(this);
+    BeamSymbolMap ret = m_symPerBeam->GetSymPerBeam(symAvail, activeDl);
 
-    GetSecond GetUeVector;
-    GetSecond GetUeBufSize;
-    GetFirst GetBeamId;
-    double bufTotal = 0.0;
-    uint8_t symUsed = 0;
-    BeamSymbolMap ret;
-
-    // Compute buf total
-    for (const auto& el : activeDl)
+    // Ensure we have one entry per beam
+    for (const auto& [beam, ueVector] : activeDl)
     {
-        for (const auto& ue : GetUeVector(el))
+        if (ret.find(beam) == ret.end())
         {
-            bufTotal += GetUeBufSize(ue);
-        }
-    }
-
-    for (const auto& el : activeDl)
-    {
-        uint32_t bufSizeBeam = 0;
-        for (const auto& ue : GetUeVector(el))
-        {
-            bufSizeBeam += GetUeBufSize(ue);
-        }
-
-        double tmp = symAvail / bufTotal;
-        uint32_t symForBeam = static_cast<uint32_t>(bufSizeBeam * tmp);
-        symUsed += symForBeam;
-        ret.emplace(std::make_pair(GetBeamId(el), symForBeam));
-        NS_LOG_DEBUG("Assigned to beam " << GetBeamId(el) << " symbols " << symForBeam);
-    }
-
-    NS_ASSERT(symAvail >= symUsed);
-    if (symAvail - symUsed > 0)
-    {
-        uint8_t symToRedistribute = symAvail - symUsed;
-        while (symToRedistribute > 0)
-        {
-            BeamSymbolMap::iterator min = ret.end();
-            for (auto it = ret.begin(); it != ret.end(); ++it)
-            {
-                if (min == ret.end() || it->second < min->second)
-                {
-                    min = it;
-                }
-            }
-            min->second += 1;
-            symToRedistribute--;
-            NS_LOG_DEBUG("Assigned to beam "
-                         << min->first << " an additional symbol, for a total of " << min->second);
+            ret[beam] = 0;
         }
     }
 
@@ -119,7 +94,6 @@ NrMacSchedulerOfdma::GetSymPerBeam(uint32_t symAvail,
     {
         const_cast<NrMacSchedulerOfdma*>(this)->m_tracedValueSymPerBeam = v.second;
     }
-
     return ret;
 }
 
