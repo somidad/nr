@@ -49,7 +49,7 @@ In this section, we present the design of the different features and procedures 
 
 Architecture
 ************
-The 'NR' module has been designed to perform end-to-end simulations of 3GPP-oriented cellular networks. The end-to-end overview of a typical simulation with the 'NR' module is drawn in Figure :ref:`fig-e2e`. In dark gray, we represent the existing, and unmodified, ns-3 and LENA components. In light gray, we describe the NR components. On one side, we have a remote host (depicted as a single node in the Figure, for simplicity, but there can be multiple nodes) that connects to an PGW/SGW (Packet Gateway and Service Gateway), through a link. Such a connection can be defined with any technology that is currently available in ns-3.  The diagram illustrates a single link, but there are no limits on the topology, including any number of remote hosts. Inside the SGW/PGW, the ``NrEpcSgwPgwApp`` encapsulates the packet using the GTP protocol. Through an IP connection, which represents the backhaul of the NR network (again, described with a single link in the Figure, but the topology can vary), the GTP packet is received by the gNB. There, after decapsulating the payload, the packet is transmitted inside the NR stack through the entry point represented by the class ``NrGnbNetDevice``. The packet, if received correctly at the UE, is passed to higher layers by the class ``NrUeNetDevice``. The path crossed by packets in the UL case is the same as the one described above but in the opposite direction.
+The 'NR' module has been designed to perform end-to-end simulations of 3GPP-oriented cellular networks. The end-to-end overview of a typical simulation with the 'NR' module is drawn in :numref:`fig-e2e`. In dark gray, we represent the existing, and unmodified, ns-3 and LENA components. In light gray, we describe the NR components. On one side, we have a remote host (depicted as a single node in the Figure, for simplicity, but there can be multiple nodes) that connects to an PGW/SGW (Packet Gateway and Service Gateway), through a link. Such a connection can be defined with any technology that is currently available in ns-3.  The diagram illustrates a single link, but there are no limits on the topology, including any number of remote hosts. Inside the SGW/PGW, the ``NrEpcSgwPgwApp`` encapsulates the packet using the GTP protocol. Through an IP connection, which represents the backhaul of the NR network (again, described with a single link in the Figure, but the topology can vary), the GTP packet is received by the gNB. There, after decapsulating the payload, the packet is transmitted inside the NR stack through the entry point represented by the class ``NrGnbNetDevice``. The packet, if received correctly at the UE, is passed to higher layers by the class ``NrUeNetDevice``. The path crossed by packets in the UL case is the same as the one described above but in the opposite direction.
 
 .. _fig-e2e:
 
@@ -59,7 +59,7 @@ The 'NR' module has been designed to perform end-to-end simulations of 3GPP-orie
 
    End-to-end class overview
 
-Concerning the RAN, we detail what is happening between ``NrGnbNetDevice`` and ``NrUeNetDevice`` in Figure :ref:`fig-ran`. The ``NrGnbMac`` and ``NrUeMac`` MAC classes implement the LTE module Service Access Point (SAP) provider and user interfaces, enabling the communication with the LTE RLC layer. The module supports RLC TM, SM, UM, and AM modes. The MAC layer contains the scheduler (``NrMacScheduler`` and derived classes). Every scheduler also implements an SAP for LTE RRC layer configuration (``NrGnbRrc``). The ``NrPhy`` classes are used to perform the directional communication for both downlink (DL) and uplink (UL), to transmit/receive the data and control channels. Each ``NrPhy`` class writes into an instance of the ``NrSpectrumPhy`` class, which is shared between the UL and DL parts.
+Concerning the RAN, we detail what is happening between ``NrGnbNetDevice`` and ``NrUeNetDevice`` in :numref:`fig-ran`. The ``NrGnbMac`` and ``NrUeMac`` MAC classes implement the LTE module Service Access Point (SAP) provider and user interfaces, enabling the communication with the LTE RLC layer. The module supports RLC TM, SM, UM, and AM modes. The MAC layer contains the scheduler (``NrMacScheduler`` and derived classes). Every scheduler also implements an SAP for LTE RRC layer configuration (``NrGnbRrc``). The ``NrPhy`` classes are used to perform the directional communication for both downlink (DL) and uplink (UL), to transmit/receive the data and control channels. Each ``NrPhy`` class writes into an instance of the ``NrSpectrumPhy`` class, which is shared between the UL and DL parts.
 
 .. _fig-ran:
 
@@ -69,7 +69,7 @@ Concerning the RAN, we detail what is happening between ``NrGnbNetDevice`` and `
 
    RAN class overview
 
-Two interesting blocks in Figure :ref:`fig-ran` are the ``NrGnbBwpM`` and ``NrUeBwpM`` layers. 3GPP does not explicitly define them, and as such, they are virtual layers. Still, they help construct a fundamental feature of our simulator: the multiplexing of different BWPs. NR has included the definition of 3GPP BWPs for energy-saving purposes, as well as to multiplex a variety of services with different QoS requirements. The component carrier concept was already introduced in LTE, and persists in NR through our general BWP concept, as a way to aggregate carriers and thereby improve the system capacity. In the 'NR' simulator, it is possible to divide the entire bandwidth into different BWPs. Each BWP can have its own PHY and MAC configuration (e.g., specific numerology, scheduler rationale, and so on). We added the possibility for any node to transmit and receive flows in different BWPs, by either assigning each bearer to a specific BWP or distributing the data flow among different BWPs, according to the rules of the manager. The introduction of a proxy layer to multiplex and demultiplex the data was necessary to glue everything together, and this is the purpose of these two new classes (``NrGnbBwpM`` and ``NrUeBwpM``).
+Two interesting blocks in :numref:`fig-ran` are the ``NrGnbBwpM`` and ``NrUeBwpM`` layers. 3GPP does not explicitly define them, and as such, they are virtual layers. Still, they help construct a fundamental feature of our simulator: the multiplexing of different BWPs. NR has included the definition of 3GPP BWPs for energy-saving purposes, as well as to multiplex a variety of services with different QoS requirements. The component carrier concept was already introduced in LTE, and persists in NR through our general BWP concept, as a way to aggregate carriers and thereby improve the system capacity. In the 'NR' simulator, it is possible to divide the entire bandwidth into different BWPs. Each BWP can have its own PHY and MAC configuration (e.g., specific numerology, scheduler rationale, and so on). We added the possibility for any node to transmit and receive flows in different BWPs, by either assigning each bearer to a specific BWP or distributing the data flow among different BWPs, according to the rules of the manager. The introduction of a proxy layer to multiplex and demultiplex the data was necessary to glue everything together, and this is the purpose of these two new classes (``NrGnbBwpM`` and ``NrUeBwpM``).
 
 Note: The 3GPP definition for "Bandwidth Part" (BWP) is made for energy-saving purposes at the UE nodes. As per the 3GPP standard, the active 3GPP BWP at a UE can vary semi-statically, and multiple 3GPP BWPs can span over the same frequency spectrum region. In this text, and through the code, we use the word BWP to refer to various things that are not always in line with the 3GPP definition.
 
@@ -149,7 +149,7 @@ In the time domain, each 10 ms frame is split in time into ten subframes, each o
 
 In the frequency domain, the number of subcarriers per physical resource block (PRB) is fixed to 12, and the maximum number of PRBs, according to Release-15, is 275. With a particular channel bandwidth, the numerology defines the size of a PRB and the total number of PRBs usable by the system. PRBs are grouped into PRB groups at MAC scheduling time.
 
-Figure :ref:`fig-frame` shows the NR frame structure in time- and frequency- domains for numerology 3 with normal CP and a total channel bandwidth of 400 MHz.
+:numref:`fig-frame` shows the NR frame structure in time- and frequency- domains for numerology 3 with normal CP and a total channel bandwidth of 400 MHz.
 
 .. _fig-frame:
 
@@ -185,7 +185,7 @@ Some of the details of what is explained above is present in the papers [WNS3201
 
 FDM of numerologies
 ===================
-An additional level of flexibility in the NR system can be achieved by implementing the multiplexing of numerologies in the frequency domain. As an example, ultra-reliable and low-latency communications (URLLC) traffic requires a short slot length to meet strict latency requirements, while enhanced mobile broadband (eMBB) use case in general aims at increasing throughput, which is achieved with a large slot length. Therefore, among the set of supported numerologies for a specific operational band and deployment configuration, URLLC can be served with the numerology that has the shortest slot length and eMBB with the numerology associated with the largest slot length. To address that, NR enables FDM of numerologies through different BWPs, to address the trade-off between latency and throughput for different types of traffic by physically dividing the bandwidth in two or more BWPs. In Figure :ref:`fig-bwp`, we illustrate an example of the FDM of numerologies. The channel is split into two BWPs that accommodate the two numerologies multiplexed in the frequency domain. The total bandwidth :math:`B` is then divided into two parts of bandwidth :math:`B_u` for URLLC and :math:`B_e` for eMBB, so that :math:`B_u+B_e \le B`.
+An additional level of flexibility in the NR system can be achieved by implementing the multiplexing of numerologies in the frequency domain. As an example, ultra-reliable and low-latency communications (URLLC) traffic requires a short slot length to meet strict latency requirements, while enhanced mobile broadband (eMBB) use case in general aims at increasing throughput, which is achieved with a large slot length. Therefore, among the set of supported numerologies for a specific operational band and deployment configuration, URLLC can be served with the numerology that has the shortest slot length and eMBB with the numerology associated with the largest slot length. To address that, NR enables FDM of numerologies through different BWPs, to address the trade-off between latency and throughput for different types of traffic by physically dividing the bandwidth in two or more BWPs. In :numref:`fig-bwp`, we illustrate an example of the FDM of numerologies. The channel is split into two BWPs that accommodate the two numerologies multiplexed in the frequency domain. The total bandwidth :math:`B` is then divided into two parts of bandwidth :math:`B_u` for URLLC and :math:`B_e` for eMBB, so that :math:`B_u+B_e \le B`.
 
 .. _fig-bwp:
 
@@ -231,11 +231,17 @@ CQI feedback
 ============
 NR defines a Channel Quality Indicator (CQI), which is reported by the UE and can be used for MCS index selection at the gNB for DL data transmissions. NR defines three tables of 4-bit CQIs (see Tables 5.2.2.1-1 to 5.2.2.1-3 in [TS38214]_), where each table is associated with one MCS table. In the simulator, we support CQI Table1 and CQI Table2 (i.e., Table 5.2.2.1-1 and Table 5.2.2.1-2), which are defined based on the configured error model and corresponding MCS Table.
 
-At the moment, we support the generation of a *wide-band* CQI that is computed based on the data channel (PDSCH). Such value is a single integer that represents the entire channel state or better said, the (average) state of the resource blocks that have been used in the gNB transmission (neglecting RBs with 0 transmitted power).
+Before nr-3.0, we only supported the generation of a *wide-band* CQI that is computed based on the SISO data channel (PDSCH). Such value is a single integer that represents the entire channel state or better said, the (average) state of the resource blocks that have been used in the gNB transmission (neglecting RBs with 0 transmitted power).
 
 The CQI index to be reported is obtained by first obtaining an SINR measurement and then passing this SINR measurement to the Adaptive Modulation and Coding module (see details in AMC section) that maps it to the CQI index. Such value is computed for each PDSCH reception and reported after it.
 
 In case of UL transmissions, there is not explicit CQI feedback, since the gNB directly indicates to the UE the MCS to be used in UL data transmissions. In that case, the gNB measures the SINR received in the PUSCH, and computes based on it the equivalent CQI index, and from it the MCS index for UL is determined.
+
+Since nr-3.0, we also support *wide-band* CQI computed based on the MIMO data channel (PSDCH).
+
+Since nr-4.0, we also support *wide-band* and *sub-band* CQI for MIMO data channel (PDSCH) and/or the CSI-RS+CSI-IM (see more in :ref:`CSI-RS and CSI-IM`).
+
+CQI feedback for MIMO is detailed in section :ref:`Search for the optimal precoding matrix`.
 
 
 Power allocation
@@ -324,7 +330,7 @@ has been used for what concerns the extraction of link-level performance
 by using the Exponential Effective SINR (EESM) as the L2SM mapping function.
 
 The overall NR PHY abstraction model that is implemented in the 'NR' module is shown in
-Figure :ref:`fig-l2sm`. The L2SM process receives inputs consisting of a vector
+:numref:`fig-l2sm`. The L2SM process receives inputs consisting of a vector
 of SINRs per allocated RB, the MCS selection (including MCS index and the MCS
 table to which it refers), the TBS delivered to PHY, and the HARQ history. Then,
 it provides as output the BLER of the MAC transport block.
@@ -371,7 +377,7 @@ The MCS Table1 includes from MCS0 (ECR=0.12, QPSK, SE=0.23 bits/s/Hz)
 to MCS28 (ECR=0.94, 64-QAM, SE=5.55 bits/s/Hz), whereas the MCS Table2
 has MCS indices from MCS0 (ECR=0.12, QPSK, SE=0.23 bits/s/Hz) to MCS27
 (ECR=0.93, 256-QAM, SE=7.40 bits/s/Hz).
-As shown in Figure :ref:`fig-l2sm`, the MCS Table (1 or 2) and the
+As shown in :numref:`fig-l2sm`, the MCS Table (1 or 2) and the
 MCS index (0 to 28 for MCS Table1, and 0 to 27 for MCS Table2) are
 inputs for the NR PHY abstraction.
 
@@ -474,7 +480,7 @@ The BF task is composed of a pair of connected gNB and UE devices for which
 the BF helper will manage the update of the BF vectors by calling
 ``GetBeamformingVectors`` of the configured BF algorithm.
 
-In Figure :ref:`fig-rbf-impl`, we show the class diagram of the beamforming model.
+In :numref:`fig-rbf-impl`, we show the class diagram of the beamforming model.
 
 .. _fig-rbf-impl:
 
@@ -574,7 +580,7 @@ section.
 Finally, ``CalculateTheEstimatedLongTermMetric`` calculates the metric that is used to select the
 best BF pair.
 
-In Figure :ref:`fig-rbf-impl`, we show the diagram of the classes that are used for realistic
+In :numref:`fig-rbf-impl`, we show the diagram of the classes that are used for realistic
 BF based on SRS measurements, the dependencies among classes, and the most important
 methods. E.g., we can see that `RealisticBeamformingAlgorithm`
 needs to access to `ThreeGppChannelModel` to obtain the channel matrix in order to perform the estimation of the channel based on SRS report.
@@ -620,7 +626,7 @@ SRS is typically transmitted over only a subset of subcarriers, defined by the
 configuration, e.g., each 2nd or each 4th subcarrier is used for SRS transmission.
 However, since the minimum transmission granularity in 5G-LENA module is a RB in frequency domain,
 all subcarriers are used for SRS transmission.
-Figure :ref:`fig-srs-5glena` shows the slot structure and the symbols over which the
+:numref:`fig-srs-5glena` shows the slot structure and the symbols over which the
 SRS transmission spans, assuming a repeated TDD pattern structure of
 [DL F UL UL UL] (i.e., one DL slot, followed by one flexible slot and three UL
 slots and that SRS transmissions occur in F slots (i.e., slots number 1 and 6 in the figure).
@@ -1221,7 +1227,7 @@ When using MIMO one should configure the ``AmcModel`` as ``ErrorModel``. The ``S
 some additions are needed to ``NrAmc`` to allow its usage.
 
 Search for the optimal precoding matrix
-###########################################
+#######################################
 
 ``NrPmSearchFull`` class is implemented to find the optimal precoding matrix, rank indicator, and corresponding CQI,
 and creates a CQI/PMI/RI feedback message. ``NrPmSearchFull`` uses exhaustive search for 3GPP Type-I codebooks.
@@ -1241,6 +1247,34 @@ another specialization of ``NrPmSearch`` that would implement a different algori
 
 The size of the sub-bands depends on the channel bandwidth, both in numbers of PRBs. It should be set accordingly to 3GPP
 TS 38.214 Table 5.2.1.4-2 via the attribute ``NrPmSearch::SubbandSize``.
+
+As of release 4.0, additional PMI selection techniques were included. These can be selected by setting
+``NrHelper::PmSearchMethod`` attribute to ``ns3::NrPmSearchIdeal``, ``ns3::NrPmSearchFast``, ``ns3::NrPmSearchSasaoka``,
+``ns3::NrPmSearchMaleki``.
+
+* ``NrPmsearchIdeal`` extracts the theoretical ideal precoding matrix from the channel matrix via SVD decomposition,
+  then selects the number of columns (equivalent to the rank) that maximizes the TBS through brute force.
+
+* ``NrPmSearchFast`` uses a RI selection technique, settable via the attribute ``NrPmSearch::RankTechnique``, to skip
+  all other rank computations.
+
+  * Available RI techniques include: ``SVD``, based on SVD decomposition;
+    ``WaterFilling``, based on power allocation; ``Sasaoka``, based on increment of channel capacity ratio.
+
+    * Rank selections ``SVD`` and ``WaterFilling`` must be calibrated per scenario using
+      the calibration factor ``NrPmSearch::RankThreshold``.
+    * After determining the rank, the PMI sub-indices I1 and I2 are searched.
+
+  * The I1 index, which corresponds to wide-band component, is searched using the channel matrix average.
+  * The I2 index, which corresponds to sub-band component, is searched using the channel matrix averaged per sub-band.
+
+* ``NrPmSearchSasaoka`` uses the ``Sasaoka`` RI selection technique, then searches for the PMI that maximizes
+  the mutual information, instead of TBS targeted by other techniques. Both techniques are proposed in [Sasaoka2019]_.
+
+* ``NrPmSearchMaleki`` implements a search-free PMI selection exploiting intrinsic characteristics of
+  the 3GPP Type I codebooks proposed in [Maleki2023]_.
+  Since the PMI search is fast, the RI is determined by brute-force search.
+
 
 MIMO activation
 ###############
@@ -1488,6 +1522,22 @@ the scheduling criteria is the same as in the corresponding OFDMA
 schedulers, while the scheduling is performed in time-domain instead of
 the frequency-domain, and thus the resources being allocated are symbols instead of RBGs.
 
+Since nr-4.0, sub-band CQI information can be used by the schedulers to avoid allocating interfered RBGs.
+This can be achieved by changing the ``NrMacSchedulerNs3::McsCsiSource``.
+The default value of this attribute is set to ``WIDEBAND_MCS``, which uses the wide-band CQI,
+and the MCS derived from it, to schedule each UE RBG with the same priority.
+To estimate the MCS of allocated RBGs based on the sub-band CQI information, set the attribute
+to one of the following: ``AVG_MCS``, ``AVG_SPEC_EFF`` and ``AVG_SINR``.
+
+* ``AVG_MCS``: averages the approximated MCS for a given sub-band CQI (note that MCS is wideband,
+  and this is a rought estimate).
+* ``AVG_SPEC_EFF``: averages the approximated spectral efficiency of allocated RBGs, then
+  transforms it back to an MCS estimate.
+* ``AVG_SINR``: averages the SINR of allocated RBGs, then compute the resulting MCS straight
+  directly from the error models. It is the most accurate estimate.
+
+Note that when sub-band CQI is used, the RBG allocated to the UE is the one that produces
+the highest MCS.
 
 Scheduler operation
 ===================
@@ -1869,7 +1919,7 @@ Two general types of maps can be generated according to whether the BeamShape
 or CoverageArea is selected.
 The first case considers the configuration of the beamforming vectors (for each
 RTD) as defined by the user in the scenario script for which the REM maps
-(SNR/SINR/IPSD) are generated. Examples are given in Figure :ref:`fig-BSexamples`
+(SNR/SINR/IPSD) are generated. Examples are given in :numref:`fig-BSexamples`
 where the first two figures depict the SNR (left) and SINR (right) for the case
 of two gNBs with antenna array configuration 8x8 and Isotropic elements, while
 the two figures on the bottom correspond to 3GPP element configuration.
@@ -1886,7 +1936,7 @@ In the second case, the beams are reconfigured during the map generation for
 each rem point in order to visualize the coverage area in terms of SNR, SINR
 and IPSD. Examples of the SNR (left) and SINR (right) CoverageArea maps for two
 gNBs with Isotropic/3GPP (top/bottom) antenna elements are presented in
-Figure :ref:`fig-CAexamples`.
+:numref:`fig-CAexamples`.
 
 .. _fig-CAexamples:
 
@@ -1898,7 +1948,7 @@ Figure :ref:`fig-CAexamples`.
 
 The ``NrRadioEnvironmentMapHelper`` allows also the visualization of the coverage
 holes when buildings are included in the deployment. An example is given in
-Figure :ref:`fig-CAexamplesBuildings`, where Isotropic antenna elements were
+:numref:`fig-CAexamplesBuildings`, where Isotropic antenna elements were
 configured to both gNBs of the example.
 
 .. _fig-CAexamplesBuildings:
@@ -1909,7 +1959,7 @@ configured to both gNBs of the example.
 
    CoverageArea map examples with buildings (left: SNR, right: SINR)
 
-An example for a hexagonal deployment is given in Figure :ref:`fig-S3`. In this
+An example for a hexagonal deployment is given in :numref:`fig-S3`. In this
 example the REM depicts a scenario for the frequency band of 2GHz, BW of 10 MHz,
 while the Inter-Site Distance (ISD) has been set to 1732m for the Urban case (top)
 and 7000m for the Rural case (bottom). The transmit power has been set to 43 dBm.
@@ -1922,7 +1972,7 @@ and 7000m for the Rural case (bottom). The transmit power has been set to 43 dBm
 
    Hexagonal Topology (BeamShape) map examples (left: SNR, right: SINR)
 
-Finally, Figure :ref:`fig-HetNet` presents an example of a Heterogeneous Network
+Finally, :numref:`fig-HetNet` presents an example of a Heterogeneous Network
 (HetNet) of 7 Macro sites and 3 randomly deployed Small Cells.
 
 .. _fig-HetNet:
@@ -1938,7 +1988,7 @@ for the DL or the UL direction. This can be done by passing to the rem helper
 the desired transmitting device(s) (RTD(s)) and receiving device (RRD), which
 for the DL case correspond to gNB(s) and UE, respectively, while for the UL
 case to UE(s) and gNB, respectively. An example of an UL case is given in
-Figure :ref:`fig-UlRemHex`, for the hexagonal topology presented in Figure :ref:`fig-S3`
+:numref:`fig-UlRemHex`, for the hexagonal topology presented in :numref:`fig-S3`
 above (Urban case), for 324 UEs with UE transmit power 23 dBm, antenna height 1.5m
 and 1x1 antenna array.
 
@@ -2103,8 +2153,6 @@ Usage
 This section is principally concerned with the usage of the model, using
 the public API. We discuss on examples available to the user.
 
-.. _Examples:
-
 Examples
 ********
 
@@ -2117,7 +2165,7 @@ The program ``nr/examples/cttc-3gpp-channel-simple-ran.cc``
 allows users to select the numerology and test the performance considering
 only the RAN. The scenario topology is simple, and it
 consists of a single gNB and single UE. The scenario is illustrated in
-Figure ::`fig-scenario-simple`.
+::`fig-scenario-simple`.
 
 .. _fig-scenario-simple:
 
@@ -2136,7 +2184,7 @@ cttc-3gpp-channel-nums.cc
 =========================
 The program ``examples/cttc-3gpp-channel-nums.cc``
 allows users to select the numerology and test the end-to-end performance.
-Figure :ref:`fig-end-to-end` shows the simulation setup.
+:numref:`fig-end-to-end` shows the simulation setup.
 The user can run this example with UDP full buffer traffic and can specify the
 UDP packet interval.
 
@@ -2172,7 +2220,7 @@ The configuration of BWP is composed of the following parameters:
 central carrier frequency, bandwidth and numerology. There are 2 UEs, and each UE has one flow.
 One flow is of URLLC traffic type, while the another is eMBB.
 URLLC is configured to be transmitted over the first BWP, and the eMBB over the second BWP.
-Figure :ref:`fig-end-to-end` shows the simulation setup.
+:numref:`fig-end-to-end` shows the simulation setup.
 Note that this simulation topology is as the one used in ``scratch/cttc-3gpp-channel-nums.cc``
 The user can run this example with UDP full buffer traffic or can specify the
 UDP packet interval and UDP packet size per type of traffic.
@@ -2186,7 +2234,7 @@ cttc-3gpp-indoor-calibration.cc
 The program ``examples/cttc-3gpp-indoor-calibration`` is the simulation
 script created for the NR-MIMO Phase 1 system-level calibration.
 The scenario implemented in this simulation script is according to
-the topology described in 3GPP TR 38.901 V17.0.0 (2022-03) Figure 7.2-1:
+the topology described in 3GPP TR 38.901 V17.0.0 (2022-03) 7.2-1:
 "Layout of indoor office scenarios".
 The simulation assumptions and the configuration parameters follow
 the evaluation assumptions agreed at 3GPP TSG RAN WG1 meeting #88,
@@ -2511,7 +2559,7 @@ and UEs, are also varied. Finally, let us notice that all scenarios have been
 evaluated under full buffer traffic, as indicated by 3GPP reference results.
 
 The network layout consists in a hexagonal topology with 37 sites of 3 sectors each,
-thus leading to 111 Base Stations (BS), as shown in Figure :ref:`fig-calibration-hex-grid`.
+thus leading to 111 Base Stations (BS), as shown in :numref:`fig-calibration-hex-grid`.
 However, in the measurements we consider only the 21 inner BSs, while the 111 BSs
 are simulated to account for the wrap-around effect. Notice that each sector has
 its antenna arrays oriented towards its sector area, and each sector area is equally
@@ -2696,8 +2744,6 @@ be based only on DATA, and thus is aperiodic and might not contain the informati
 feedback can be based on CSI-RS and CSI-IM, and hence is periodic and provides the information over all the bandwidth.
 This parameter can take the following values: ``CQI_PDSCH_MIMO = 1``, ``CQI_CSI_RS = 2``, ``CQI_PDSCH_MIMO|CQI_CSI_RS = 3``,
 ``CQI_CSI_RS|CQI_CSI_IM = 6``, ``CQI_PDSCH_MIMO|CQI_CSI_RS|CQI_CSI_IM = 7``, and ``CQI_PDSCH_SISO = 8``.
-
-.. _Validation:
 
 Validation
 ----------
@@ -2952,24 +2998,69 @@ TrafficGeneratorTestCase checks that the traffic generator is correctly being co
 The complete details of the validation script are provided in
 https://cttc-lena.gitlab.io/nr/html/traffic-generator-test_8cc_source.html
 
+Test for RI and PMI selection techniques
+========================================
 
+Test case called ``nr-test-ri-pmi-system`` is a system test used to verify the different RI/PMI selection techniques produce the expected results,
+in terms of performance, mean rank and MCS. The test is setup like ``cttc-nr-mimo-demo``, with a single gNB-UE pair, generating traffic to fully saturate
+the channel. The different RI and PMI techniques produce different precoding matrices, increasing or lowering the gain. The difference in gain
+directly reflect on link adaptation, changing the rank and MCS selection, resulting in better or worse results in terms of throughput and latency.
+
+The complete details of the validation script are provided in
+https://cttc-lena.gitlab.io/nr/html/nr-test-ri-pmi_8cc.html
+
+
+Test for CSI feedback with MIMO
+===============================
+
+Test case called ``nr-test-csi`` is a system test used to verify the CSI feedback works correctly without and with interference.
+The test is setup with a main gNB-UE pair. The main UE is the measuring UE, that is used to collect the metrics used by the test.
+In case we are testing with interference, a secondary gNB-UE pair is added. The interfered band of the secondary gNB-UE pair is
+defined by an interference pattern, implemented using a notching mask to model the frequency domain and a ON-OFF application
+to model the time domain. That interference pattern can be either wide-band, or narrow-band (occupying the upper or lower
+half of the bandwidth), according to the notching mask.
+
+To check if the interference is being properly detected by the CSI, we monitor the main UE, which must
+traverse through the states of the following finite state machine shown in :numref:`fig-csi-test-fsm`.
+
+.. _fig-csi-test-fsm:
+
+.. figure:: figures/csi-test-fsm.png
+   :align: center
+   :scale: 80 %
+
+   Finite state machine for interference detection with CSI
+
+Many different combinations of interference measurement sources are tested, including ``CQI_PDSCH_SISO``,
+``CQI_CSI_PDSCH_MIMO``, ``CQI_CSI_RS | CQI_CSI_IM`` and ``CQI_PDSCH_MIMO | CQI_CSI_RS | CQI_CSI_IM``
+(see more details in :ref:`CSI-RS and CSI-IM`).
+We also measure the main UE throughput using the wide-band and sub-band CQI scheduling
+(see more details in :ref:`Scheduler`).
+
+The rank, MCS, mean throughput throughout the simulation, the mean throughput over a sliding window,
+and sub-band CQI reports over time are collected by the test-suite and stored into a JSON file for easy processing.
+A companion script, ``nr-test-csi-plot.py``, can plot all the measurements for all the test cases, allowing for
+the visual inspection of the behavior of the system during the simulation.
+
+The complete details of the validation script are provided in
+https://cttc-lena.gitlab.io/nr/html/nr-test-csi_8cc.html
 
 Open issues and future work
 ---------------------------
 
-.. [mmwave-module] NYU WIRELESS, University of Padova, "ns-3 module for simulating mmwave-based cellular systems," Available at https://github.com/nyuwireless/ns3-mmwave.
+.. [mmwave-module] NYU WIRELESS, University of Padova. "ns-3 module for simulating mmwave-based cellular systems". Available at https://github.com/nyuwireless/ns3-mmwave.
 
-.. [TR38900] 3GPP TR 38.900 "Study on channel model for frequency above 6GHz", (Release 14) TR 38.912v14.0.0 (2016-12), 3rd Generation Partnership Project, 2016.
+.. [TR38900] 3GPP TR 38.900. "Study on channel model for frequency above 6GHz, (Release 14) TR 38.912v14.0.0 (2016-12), 3rd Generation Partnership Project". 2016.
 
-.. [end-to-end-mezz] Marco Mezzavilla, Menglei Zhang, Michele Polese, Russell Ford, Sourjya Dutta, Sundeep Rangan, Michele Zorzi, "End-to-End Simulation of 5G mmWave Networks,", in IEEE Communication Surveys and Tutorials, vol. 13, No 20,  pp. 2237-2263, April 2018.
+.. [end-to-end-mezz] Marco Mezzavilla, Menglei Zhang, Michele Polese, Russell Ford, Sourjya Dutta, Sundeep Rangan, Michele Zorzi. "End-to-End Simulation of 5G mmWave Networks". In IEEE Communication Surveys and Tutorials, vol. 13, No 20,  pp. 2237-2263, April 2018.
 
-.. [WNS32018-NR]  B. Bojovic, S. Lagen, L. Giupponi, Implementation and Evaluation of Frequency Division Multiplexing of Numerologies for 5G New Radio in ns-3 , in Workshop on ns-3, June 2018, Mangalore, India.
+.. [WNS32018-NR]  Biljana Bojovic, Sandra Lagen, L. Giupponi. "Implementation and Evaluation of Frequency Division Multiplexing of Numerologies for 5G New Radio in ns-3". In Workshop on ns-3, June 2018, Mangalore, India.
 
-.. [CAMAD2018-NR] N. Patriciello, S. Lagen, L. Giupponi, B. Bojovic, 5G New Radio Numerologies and their Impact on the End-To-End Latency , in Proceedings of IEEE International Workshop on Computer-Aided Modeling Analysis and Design of Communication Links and Networks (IEEE CAMAD), 17-19 September 2018, Barcelona (Spain).
+.. [CAMAD2018-NR] Natale Patriciello, Sandra Lagen, L. Giupponi, Biljana Bojovic. "5G New Radio Numerologies and their Impact on the End-To-End Latency". In Proceedings of IEEE International Workshop on Computer-Aided Modeling Analysis and Design of Communication Links and Networks (IEEE CAMAD), 17-19 September 2018, Barcelona (Spain).
 
-.. [CA-WNS32017] B. Bojovic, D. Abrignani Melchiorre, M. Miozzo, L. Giupponi, N. Baldo, Towards LTE-Advanced and LTE-A Pro Network Simulations: Implementing Carrier Aggregation in LTE Module of ns-3, in Proceedings of the Workshop on ns-3, Porto, Portugal, June 2017.
+.. [CA-WNS32017] Biljana Bojovic, D. Abrignani Melchiorre, M. Miozzo, L. Giupponi, N. Baldo. "Towards LTE-Advanced and LTE-A Pro Network Simulations: Implementing Carrier Aggregation in LTE Module of ns-3". In Proceedings of the Workshop on ns-3, Porto, Portugal, June 2017.
 
-.. [ff-api] FemtoForum , "LTE MAC Scheduler Interface v1.11", Document number: FF_Tech_001_v1.11 , Date issued: 12-10-2010.
+.. [ff-api] FemtoForum , "LTE MAC Scheduler Interface v1.11". Document number: FF_Tech_001_v1.11 , Date issued: 12-10-2010.
 
 .. [TS38300] 3GPP TS 38.300, TSG RAN; NR; Overall description; Stage 2 (Release 16), v16.0.0, Dec. 2019
 
@@ -2981,42 +3072,46 @@ Open issues and future work
 
 .. [TS38214] 3GPP  TS  38.214, TSG  RAN;  NR;  Physical  layer  procedures  for  data (Release 16), v16.0.0, Dec. 2019.
 
-.. [calibration-l2sm] A.-M. Cipriano,  R.  Visoz,  and  T.  Salzer,  "Calibration  issues  of  PHY layer  abstractions  for  wireless  broadband  systems", IEEE  Vehicular Technology Conference, Sept. 2008.
+.. [calibration-l2sm] A.-M. Cipriano,  R.  Visoz,  and  T.  Salzer.  "Calibration  issues  of  PHY layer  abstractions  for  wireless  broadband  systems". IEEE  Vehicular Technology Conference, Sept. 2008.
 
-.. [nr-l2sm] S. Lagen, K. Wanuga, H. Elkotby, S. Goyal, N. Patriciello, L. Giupponi, "New Radio Physical Layer Abstraction for System-Level Simulations of 5G Networks", in Proceedings of IEEE International Conference on Communications (IEEE ICC), 7-11 June 2020, Dublin (Ireland).
+.. [nr-l2sm] Sandra Lagen, K. Wanuga, H. Elkotby, S. Goyal, N. Patriciello, L. Giupponi. "New Radio Physical Layer Abstraction for System-Level Simulations of 5G Networks". In Proceedings of IEEE International Conference on Communications (IEEE ICC), 7-11 June 2020, Dublin (Ireland).
 
-.. [baldo2009] N. Baldo and M. Miozzo, "Spectrum-aware Channel and PHY layer modeling for ns3", Proceedings of ICST NSTools 2009, Pisa, Italy.
+.. [baldo2009] Nicola Baldo and M. Miozzo. "Spectrum-aware Channel and PHY layer modeling for ns3". Proceedings of ICST NSTools 2009, Pisa, Italy.
 
-.. [notching1] H. McDonald, D. Shyy, M. Steele and C. Patterson, "LTE Uplink Interference Mitigation Features," MILCOM 2018 - 2018 IEEE Military Communications Conference (MILCOM), Los Angeles, CA, 2018, pp. 505-511, doi: 10.1109/MILCOM.2018.8599850
+.. [notching1] Howard McDonald, D. Shyy, M. Steele and C. Patterson. "LTE Uplink Interference Mitigation Features," MILCOM 2018 - 2018 IEEE Military Communications Conference (MILCOM), Los Angeles, CA, 2018, pp. 505-511, doi: 10.1109/MILCOM.2018.8599850
 
-.. [notching2] H. McDonald et al., "AWS-3 Interference Mitigation: Improving Spectrum Sharing with LTE & 5G Uplink Spectrum Control," MILCOM 2019 - 2019 IEEE Military Communications Conference (MILCOM), Norfolk, VA, USA, 2019, pp. 102-107, doi: 10.1109/MILCOM47813.2019.9020877
+.. [notching2] Howard McDonald et al. "AWS-3 Interference Mitigation: Improving Spectrum Sharing with LTE & 5G Uplink Spectrum Control," MILCOM 2019 - 2019 IEEE Military Communications Conference (MILCOM), Norfolk, VA, USA, 2019, pp. 102-107, doi: 10.1109/MILCOM47813.2019.9020877
 
 .. [lte-ulpc] LTE ns-3 implementation of uplink power control: https://www.nsnam.org/docs/models/html/lte-design.html#power-control
 
-.. [SigProc5G] F.-L. Luo and C. J. Zhang, "Signal Processing for 5G: Algorithms and Implementations", John Wiley & Sons., Aug. 2016.
+.. [SigProc5G] F.-L. Luo and C. J. Zhang. "Signal Processing for 5G: Algorithms and Implementations". John Wiley & Sons., Aug. 2016.
 
-.. [TS38331]  3GPP TS 38.331, Radio Resource Control (RRC), (Rel. 15), 2018.
+.. [TS38331]  3GPP. "TS 38.331, Radio Resource Control (RRC), (Rel. 15)". 2018.
 
-.. [IMT-2020] ITU-R, Submission, evaluation process and consensus building for IMT-2020, ITU-R IMT-2020/2-E, 2019.
+.. [IMT-2020] ITU-R. "Submission, evaluation process and consensus building for IMT-2020, ITU-R IMT-2020/2-E". 2019.
 
-.. [SIMPAT-calibration] K. Koutlia, B. Bojovic, Z. Ali, S. Laǵen, Calibration of the 5G-LENA system level simulator in 3GPP reference scenarios, Simulation Modelling Practice and Theory 119, 2022.
+.. [SIMPAT-calibration] Katerina Koutlia, Biljana Bojovic, Z. Ali, S. Laǵen. "Calibration of the 5G-LENA system level simulator in 3GPP reference scenarios". Simulation Modelling Practice and Theory 119, 2022.
 
-.. [TR38901] 3GPP TR 38.901 "Study on Channel Model for Frequencies from 0.5 to 100 GHz", (Release 15) TR 38.901v16.1.0 (2020), 3rd Generation Partnership Project, 2020.
+.. [TR38901] 3GPP. "Study on Channel Model for Frequencies from 0.5 to 100 GHz". (Release 15) TR 38.901v16.1.0 (2020), 3rd Generation Partnership Project, 2020.
 
-.. [RP180524] Huawei RP-180524, "Summary of Calibration Results for IMT-2020 Self Evaluation", 3GPP TSG RAN Meeting #79, 2018.
+.. [RP180524] Huawei. "RP-180524 Summary of Calibration Results for IMT-2020 Self Evaluation". 3GPP TSG RAN Meeting #79, 2018.
 
-.. [NGMN-traffics] NGMN Alliance, "NGMN Radio Access Performance Evaluation Methodology", 2008.
+.. [NGMN-traffics] NGMN Alliance. "NGMN Radio Access Performance Evaluation Methodology". 2008.
 
-.. [TR38838] 3GPP TR 38.838, "Study on XR (Extended Reality) Evaluations for NR", V17.0.0, 2022.
+.. [TR38838] 3GPP. "TR 38.838 Study on XR (Extended Reality) Evaluations for NR". V17.0.0, 2022.
 
-.. [WNS32022-ngmn] B. Bojovic, S. Lagen, Enabling NGMN mixed traffic models for ns-3, in Workshop on ns-3, June 2022.
+.. [WNS32022-ngmn] Biljana Bojovic, Sandra Lagen. "Enabling NGMN mixed traffic models for ns-3". In Workshop on ns-3, June 2022.
 
-.. [WNS3-QosSchedulers] K. Koutlia, S. Lagen, and B. Bojovic. 2023. Enabling QoS Provisioning Support for Delay-Critical Traffic and Multi-Flow Handling in ns-3 5G-LENA. In Proceedings of the 2023 Workshop on ns-3 (WNS3 '23). Association for Computing Machinery, New York, NY, USA, 45–51. https://doi.org/10.1145/3592149.3592159.
+.. [WNS3-QosSchedulers] Katerina Koutlia, Sandra Lagen, and Biljana Bojovic. "Enabling QoS Provisioning Support for Delay-Critical Traffic and Multi-Flow Handling in ns-3 5G-LENA". In Proceedings of the 2023 Workshop on ns-3 (WNS3 '23). Association for Computing Machinery, New York, NY, USA, 45–51. https://doi.org/10.1145/3592149.3592159.
 
-.. [Palomar2006] Daniel P. Palomar and Yi Jiang: MIMO Transceiver Design via Majorization Theory
+.. [Palomar2006] Daniel P. Palomar and Yi Jiang. "MIMO Transceiver Design via Majorization Theory"
 
 .. [interf-whitening] "Whitening transformation": https://en.wikipedia.org/wiki/Whitening_transformation
 
 .. [eigen3] Eigen library: https://eigen.tuxfamily.org/
 
-.. [ComNetFhControl] Katerina Koutlia, Sandra Lagén, "On the impact of Open RAN Fronthaul Control in scenarios with XR Traffic", Computer Networks, Volume 253, August 2024.
+.. [ComNetFhControl] Katerina Koutlia, Sandra Lagén. "On the impact of Open RAN Fronthaul Control in scenarios with XR Traffic". Computer Networks, Volume 253, August 2024.
+
+.. [Sasaoka2019] Naoto Sasaoka, Takumi Sasaki, Yoshio Itoh. "PMI/RI Selection Based on Channel Capacity Increment Ratio". 2019 International Symposium on Multimedia and Communication Technology (ISMAC). doi: 10.1109/ISMAC.2019.8836179.
+
+.. [Maleki2023] Marjan Maleki, Juening Jin and Martin Haardt. "Low Complexity PMI Selection for BICM-MIMO Rate Maximization in 5G New Radio Systems". 2023 31st European Signal Processing Conference (EUSIPCO). doi: 10.23919/EUSIPCO58844.2023.10290121.

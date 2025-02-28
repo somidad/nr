@@ -6,6 +6,8 @@
 
 #include "ns3/log.h"
 
+#include <numeric>
+
 namespace ns3
 {
 
@@ -22,25 +24,25 @@ NrMacSchedulerUeInfo::~NrMacSchedulerUeInfo()
 {
 }
 
-uint32_t&
+std::vector<uint16_t>&
 NrMacSchedulerUeInfo::GetDlRBG(const UePtr& ue)
 {
     return ue->m_dlRBG;
 }
 
-uint32_t&
+std::vector<uint16_t>&
 NrMacSchedulerUeInfo::GetUlRBG(const UePtr& ue)
 {
     return ue->m_ulRBG;
 }
 
-uint8_t&
+std::vector<uint8_t>&
 NrMacSchedulerUeInfo::GetDlSym(const UePtr& ue)
 {
     return ue->m_dlSym;
 }
 
-uint8_t&
+std::vector<uint8_t>&
 NrMacSchedulerUeInfo::GetUlSym(const UePtr& ue)
 {
     return ue->m_ulSym;
@@ -50,6 +52,64 @@ uint8_t&
 NrMacSchedulerUeInfo::GetDlMcs(const UePtr& ue)
 {
     return ue->m_dlMcs;
+}
+
+template <typename T>
+uint8_t
+ComputeMcs(const NrMacSchedulerUeInfo* ueInfo,
+           T NrMacSchedulerUeInfo::SbMcsInfo::*field,
+           std::function<uint8_t(double)> postProcessing)
+{
+    // Compute average field of allocated RBGs
+    const auto sum = std::transform_reduce(
+        ueInfo->m_dlRBG.begin(),
+        ueInfo->m_dlRBG.end(),
+        0.0,
+        [](auto a, auto b) { return a + b; },
+        [ueInfo, field](auto a) {
+            return ueInfo->m_dlSbMcsInfo.at(ueInfo->m_rbgToSb.at(a)).*field;
+        });
+    const auto avg = sum / ueInfo->m_dlRBG.size();
+    return postProcessing(avg);
+}
+
+uint8_t
+NrMacSchedulerUeInfo::GetDlMcs() const
+{
+    // Return maximum allowed MCS according to Fronthaul control
+    if (m_fhMaxMcsAssignable.has_value())
+    {
+        return m_fhMaxMcsAssignable.value();
+    }
+
+    // In case there is no sub-band info or no RBG has been allocated, return the wideband MCS
+    if (m_dlSbMcsInfo.empty() || m_dlRBG.empty() || (m_mcsCsiSource == McsCsiSource::WIDEBAND_MCS))
+    {
+        return m_dlMcs;
+    }
+
+    // Otherwise, compute the SINR of allocated RBGs
+    switch (m_mcsCsiSource)
+    {
+    // Estimate MCS based on the average MCS of allocated RBGs
+    case McsCsiSource::AVG_MCS: {
+        return ComputeMcs(this, &SbMcsInfo::mcs, [](double avg) { return (uint8_t)floor(avg); });
+    }
+    // Estimate MCS based on the average spectral efficiency of allocated RBGs
+    case McsCsiSource::AVG_SPEC_EFF: {
+        return ComputeMcs(this,
+                          &SbMcsInfo::specEff,
+                          std::bind_front(&NrAmc::GetMcsFromSpectralEfficiency, m_dlAmc));
+    }
+    // Estimate MCS based on the average SINR of allocated RBGs
+    case McsCsiSource::AVG_SINR: {
+        return ComputeMcs(this, &SbMcsInfo::sinr, [amc = m_dlAmc](double avgSinr) {
+            return amc->GetMcsFromSpectralEfficiency(amc->GetSpectralEfficiencyForSinr(avgSinr));
+        });
+    }
+    default:
+        NS_ABORT_MSG("Invalid csi source for MCS computation");
+    }
 }
 
 uint8_t&
@@ -105,8 +165,8 @@ void
 NrMacSchedulerUeInfo::ResetDlSchedInfo()
 {
     m_dlMRBRetx = 0;
-    m_dlRBG = 0;
-    m_dlSym = 0;
+    m_dlRBG.clear();
+    m_dlSym.clear();
     m_dlTbSize = 0;
 }
 
@@ -114,21 +174,22 @@ void
 NrMacSchedulerUeInfo::ResetUlSchedInfo()
 {
     m_ulMRBRetx = 0;
-    m_ulRBG = 0;
-    m_ulSym = 0;
+    m_ulRBG.clear();
+    m_ulSym.clear();
     m_ulTbSize = 0;
 }
 
 void
-NrMacSchedulerUeInfo::UpdateDlMetric(const Ptr<const NrAmc>& amc)
+NrMacSchedulerUeInfo::UpdateDlMetric()
 {
-    if (m_dlRBG == 0)
+    if (m_dlRBG.empty())
     {
         m_dlTbSize = 0;
     }
     else
     {
-        m_dlTbSize = amc->CalculateTbSize(m_dlMcs, m_dlRank, m_dlRBG * GetNumRbPerRbg());
+        m_dlTbSize =
+            m_dlAmc->CalculateTbSize(GetDlMcs(), m_dlRank, m_dlRBG.size() * GetNumRbPerRbg());
     }
 }
 
@@ -139,15 +200,15 @@ NrMacSchedulerUeInfo::ResetDlMetric()
 }
 
 void
-NrMacSchedulerUeInfo::UpdateUlMetric(const Ptr<const NrAmc>& amc)
+NrMacSchedulerUeInfo::UpdateUlMetric()
 {
-    if (m_ulRBG == 0)
+    if (m_ulRBG.empty())
     {
         m_ulTbSize = 0;
     }
     else
     {
-        m_ulTbSize = amc->CalculateTbSize(m_ulMcs, m_ulRank, m_ulRBG * GetNumRbPerRbg());
+        m_ulTbSize = m_ulAmc->CalculateTbSize(m_ulMcs, m_ulRank, m_ulRBG.size() * GetNumRbPerRbg());
     }
 }
 

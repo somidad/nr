@@ -13,6 +13,7 @@
 #include "ns3/matrix-array.h"
 
 #include <functional>
+#include <optional>
 #include <unordered_map>
 
 namespace ns3
@@ -75,25 +76,39 @@ class NrMacSchedulerUeInfo
      * @param ue UE pointer from which obtain the value
      * @return
      */
-    static uint32_t& GetDlRBG(const UePtr& ue);
+    static std::vector<uint16_t>& GetDlRBG(const UePtr& ue);
     /**
      * @brief GetUlRBG
      * @param ue UE pointer from which obtain the value
      * @return
      */
-    static uint32_t& GetUlRBG(const UePtr& ue);
+    static std::vector<uint16_t>& GetUlRBG(const UePtr& ue);
     /**
      * @brief GetDlSym
      * @param ue UE pointer from which obtain the value
      * @return
      */
-    static uint8_t& GetDlSym(const UePtr& ue);
+    static std::vector<uint8_t>& GetDlSym(const UePtr& ue);
     /**
      * @brief GetUlSym
      * @param ue UE pointer from which obtain the value
      * @return
      */
-    static uint8_t& GetUlSym(const UePtr& ue);
+    static std::vector<uint8_t>& GetUlSym(const UePtr& ue);
+
+    enum class McsCsiSource
+    {
+        AVG_MCS,      //!< Estimate MCS based on the average MCS of allocated RBGs
+        AVG_SPEC_EFF, //!< Estimate MCS based on the average spectral efficiency of allocated RBGs
+        AVG_SINR,     //!< Estimate MCS based on the average SINR of allocated RBGs
+        WIDEBAND_MCS  //!< Wideband MCS
+    };
+    /**
+     * @brief Get the downlink MCS, given by the wideband CQI, or
+     *        the sub-band CQIs of the currently allocated RBGs, if available
+     * @return downlink mcs
+     */
+    uint8_t GetDlMcs() const;
     /**
      * @brief GetDlMcs
      * @param ue UE pointer from which obtain the value
@@ -188,7 +203,7 @@ class NrMacSchedulerUeInfo
      *
      * The amount of assigned resources is stored inside m_dlRBG by the scheduler.
      */
-    virtual void UpdateDlMetric(const Ptr<const NrAmc>& amc);
+    virtual void UpdateDlMetric();
 
     /**
      * @brief ResetDlMetric
@@ -204,7 +219,7 @@ class NrMacSchedulerUeInfo
      *
      * The amount of assigned resources is stored inside m_ulRBG by the scheduler.
      */
-    virtual void UpdateUlMetric(const Ptr<const NrAmc>& amc);
+    virtual void UpdateUlMetric();
 
     /**
      * @brief ResetUlMetric
@@ -231,10 +246,11 @@ class NrMacSchedulerUeInfo
             SB           //!< Sub-band
         } m_cqiType{WB}; //!< CQI type
 
-        std::vector<double> m_sinr; //!< Vector of SINR for the entire band
-        uint8_t m_wbCqi{0};         //!< CQI reported value
-        uint32_t m_timer{0};        //!< Timer (in slot number).
-                                    //!< When the timer is 0, the value is discarded
+        std::vector<double> m_sinr;   //!< Vector of SINR for the entire band
+        uint8_t m_wbCqi{0};           //!< CQI reported value
+        std::vector<uint8_t> m_sbCqi; //!< Sub-band CQI reported values
+        uint32_t m_timer{0};          //!< Timer (in slot number).
+                                      //!< When the timer is 0, the value is discarded
     };
 
     void ReleaseLC(uint8_t lcid);
@@ -245,17 +261,31 @@ class NrMacSchedulerUeInfo
     std::unordered_map<uint8_t, LCGPtr> m_dlLCG; //!< DL LCG
     std::unordered_map<uint8_t, LCGPtr> m_ulLCG; //!< UL LCG
 
-    uint32_t m_dlMRBRetx{0}; //!< MRB assigned for retx. To update the name,
-                             //!< what is MRB is not defined
-    uint32_t m_ulMRBRetx{0}; //!< MRB assigned for retx. To update the name,
-                             //!< what is MRB is not defined
-    uint32_t m_dlRBG{0};     //!< DL Resource Block Group assigned in this slot
-    uint32_t m_ulRBG{0};     //!< UL Resource Block Group assigned in this slot
-    uint8_t m_dlSym{0};      //!< Number of (new data) symbols assigned in this slot.
-    uint8_t m_ulSym{0};      //!< Number of (new data) symbols assigned in this slot.
+    uint32_t m_dlMRBRetx{0};       //!< MRB assigned for retx. To update the name,
+                                   //!< what is MRB is not defined
+    uint32_t m_ulMRBRetx{0};       //!< MRB assigned for retx. To update the name,
+                                   //!< what is MRB is not defined
+    std::vector<uint16_t> m_dlRBG; //!< DL Resource Block Group assigned in this slot
+    std::vector<uint16_t> m_ulRBG; //!< UL Resource Block Group assigned in this slot
+    std::vector<uint8_t> m_dlSym;  //!< Corresponding symbol of m_dlRBG in this slot
+    std::vector<uint8_t> m_ulSym;  //!< Corresponding symbol of m_ulRBG in this slot
 
     uint8_t m_dlMcs{0}; //!< DL MCS
-    uint8_t m_ulMcs{0}; //!< UL MCS
+    std::optional<uint8_t>
+        m_fhMaxMcsAssignable; //!< Maximum DL MCS assignable due to FH limitations
+    uint8_t m_ulMcs{0};       //!< UL MCS
+
+    struct SbMcsInfo
+    {
+        uint8_t cqi;
+        uint8_t mcs;
+        float specEff;
+        float sinr;
+    };
+
+    std::vector<SbMcsInfo> m_dlSbMcsInfo; //!< Precomputed MCS, Spectral Efficiency and estimated
+                                          //!< SINR for a sub-band CQI associated with a RBG
+    std::vector<uint8_t> m_rbgToSb;       //!< Precomputed RBG to SB mapping
 
     uint32_t m_dlTbSize{0}; //!< DL Transport Block Size, depends on MCS and RBG,
                             //!< updated in UpdateDlMetric()
@@ -275,6 +305,11 @@ class NrMacSchedulerUeInfo
     uint32_t m_srsPeriodicity{0}; //!< SRS periodicity
     uint32_t m_srsOffset{0};      //!< SRS offset
     uint8_t m_startMcsDlUe{0};    //!< Starting DL MCS to be used
+
+    // Settings from the scheduler, that affects MCS, TBS and throughput computation
+    Ptr<NrAmc> m_dlAmc;          //!< AMC instance of scheduler associated with DL
+    Ptr<NrAmc> m_ulAmc;          //!< AMC instance of scheduler associated with UL
+    McsCsiSource m_mcsCsiSource; //!< Source of MCS computation based on CSI feedback
 
   protected:
     /**

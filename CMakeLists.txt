@@ -413,6 +413,7 @@ set(header_files
     model/realistic-bf-manager.h
     model/sfnsf.h
     utils/distance-based-three-gpp-spectrum-propagation-loss-model.h
+    utils/nr-json.hpp
     utils/traffic-generators/helper/traffic-generator-helper.h
     utils/traffic-generators/helper/xr-traffic-mixer-helper.h
     utils/traffic-generators/model/traffic-generator-3gpp-audio-data.h
@@ -479,6 +480,7 @@ set(test_sources
     test/nr-test-deactivate-bearer.cc
     test/nr-channel-setup-test.cc
     test/nr-test-ri-pmi.cc
+    test/nr-test-csi.cc
     # cmake-format: off
     # todo:
     # test/nr-test-x2-handover.cc               \
