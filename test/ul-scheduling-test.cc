@@ -138,7 +138,10 @@ UlSchedulingTest::CreateAndStoreFileForResults(
     if (m_ulSfn.find(rnti) != m_ulSfn.end())
     {
         SfnSf lastSfn = m_ulSfn[rnti];
-        lastSfn.Add(200);
+        // period in slots (1 frame = 10ms, consisting of 10 sub-frames, with, in this case, each
+        // sub-frame containing 1 slot; thus, there are 10 slots per frame)
+        uint32_t Nslot = (m_packetPeriod.GetMilliSeconds() / 10) * 10 / 10;
+        lastSfn.Add(Nslot);
         if (lastSfn < sfn)
         {
             file << "\n"; // Separate output data for each packet
