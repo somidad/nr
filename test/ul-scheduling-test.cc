@@ -128,11 +128,9 @@ UlSchedulingTest::CreateAndStoreFileForResults(
         file << "Sfnsf\t\t\t\t state\t\t\t Queue UL DATA\n";
     }
 
-    uint32_t txQueue = 0;
-
     for (auto it = m_ulBsrReceived.begin(); it != m_ulBsrReceived.end(); it++)
     {
-        txQueue = (*it).second.txQueueSize;
+        m_txQueue = (*it).second.txQueueSize;
     }
 
     if (m_ulSfn.find(rnti) != m_ulSfn.end())
@@ -148,7 +146,7 @@ UlSchedulingTest::CreateAndStoreFileForResults(
         }
     }
     m_ulSfn[rnti] = sfn;
-    file << sfn << "\t UE:" << srState << "\t" << uint32_t(txQueue) << "\n";
+    file << sfn << "\t UE:" << srState << "\t" << m_txQueue << "\n";
 }
 
 void
@@ -164,13 +162,14 @@ UlSchedulingTest::UeMacStateMachine(
 {
     std::string basePath = "contrib/nr";
     std::string state = "INACTIVE";
+    Time grantRxTime = MilliSeconds(10);
     if (srState == 0)
     {
         // TODO The UE transmits a BSR every time it receives a grant, even if it has no more data
         // to send. Therefore, when the gNB sends a grant that empties the UE's buffer, the UE
-        // changes to the INACTIVE state but still transmits a BSR. This behavior should be
-        // considered erroneous, as the UE is already in INACTIVE and should be waiting to receive a
-        // new message instead.
+        // changes to the INACTIVE state but still transmits a BSR.
+        // This behavior should be considered erroneous, as the UE is already in INACTIVE and should
+        // be waiting to receive a new message instead.
         state = (funcName == "SendBufferStatusReport") ? "INACTIVE- Send BSR (ERROR)" : "INACTIVE";
     }
     else if (srState == 1)
@@ -183,6 +182,14 @@ UlSchedulingTest::UeMacStateMachine(
         {
             state =
                 (funcName == "DoTransmitBufferStatusReport") ? "ACTIVE(ReTxSR)" : "ACTIVE(HARQ)";
+            if (state == "ACTIVE(HARQ)")
+            {
+                Simulator::Schedule(grantRxTime,
+                                    &UlSchedulingTest::CheckGrantRxState,
+                                    this,
+                                    sfn,
+                                    rnti);
+            }
         }
         else
         {
@@ -198,15 +205,48 @@ UlSchedulingTest::UeMacStateMachine(
             {
                 // TODO The UE should send a BSR only if new data has arrived in the buffer and the
                 // gNB is unaware of it
-                state = "ACTIVE(sendBSR) ";
+                state = "ACTIVE(sendBSR)";
             }
             else
             {
                 state = "ACTIVE(grantRX)";
+                Simulator::Schedule(grantRxTime,
+                                    &UlSchedulingTest::CheckGrantRxState,
+                                    this,
+                                    sfn,
+                                    rnti);
             }
         }
     }
+    m_lastSfnSf = sfn;
+    m_lastState = state;
     CreateAndStoreFileForResults(basePath, rnti, sfn, state, m_ulBsrReceived);
+}
+
+void
+UlSchedulingTest::CheckGrantRxState(SfnSf sfn, uint16_t rnti)
+{
+    std::ofstream file = OpenResultFile(m_testNumber, rnti);
+    if (!file)
+    {
+        return;
+    }
+    if ((m_lastState == "ACTIVE(sendBSR)" || m_lastState == "ACTIVE(HARQ)") && m_lastSfnSf == sfn &&
+        m_txQueue > 0)
+    {
+        file << m_lastSfnSf << "\t is stuck in " << m_lastState
+             << " state for 1 frame duration (ERROR) \n";
+        NS_TEST_ASSERT_MSG_EQ(
+            false,
+            true,
+            "The UE remains stuck in the ACTIVE state because the gNB "
+            "does not receive the BSR, blocking the UE from obtaining a grant to transmit data.");
+    }
+    else
+    {
+        file << m_lastSfnSf << "\t current state is " << m_lastState << " last sfn = " << sfn
+             << " and the bufSize is = " << m_txQueue << " \n";
+    }
 }
 
 std::ofstream
@@ -230,7 +270,9 @@ UlSchedulingTest::gNBUlToSch(NrSchedulingCallbackInfo data)
 {
     std::ofstream file = OpenResultFile(m_testNumber, data.m_rnti);
     if (!file)
+    {
         return;
+    }
 
     // TODO The Sfn used to schedule a grant transmission from the gNB to the UE appears later than
     // the moment the UE receives the grant.
@@ -247,7 +289,9 @@ UlSchedulingTest::gNBRxCtrl(SfnSf sfn,
 {
     std::ofstream file = OpenResultFile(m_testNumber, rnti);
     if (!file)
+    {
         return;
+    }
 
     if (msg->GetMessageType() == NrControlMessage::BSR)
     {

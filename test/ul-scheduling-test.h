@@ -102,6 +102,8 @@ class UlSchedulingTest : public TestCase
 
     void gNBUlToSch(NrSchedulingCallbackInfo);
 
+    void CheckGrantRxState(SfnSf sfn, uint16_t rnti);
+
     uint8_t m_testNumber;   ///< The identification number of the test case
     Time m_simTime;         ///< the simulation time (milliseconds)
     double m_speed;         ///< the speed at which the UE moves (meters/s)
@@ -118,6 +120,13 @@ class UlSchedulingTest : public TestCase
     std::set<uint16_t> m_storedRntis;
     std::set<uint8_t> m_storedTestNum;
     std::unordered_map<uint16_t, SfnSf> m_ulSfn;
+
+    /*
+     * Data to create the assert messages
+     */
+    SfnSf m_lastSfnSf;
+    std::string m_lastState;
+    uint32_t m_txQueue;
 };
 
 } // namespace ns3
