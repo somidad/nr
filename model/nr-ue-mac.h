@@ -543,6 +543,8 @@ class NrUeMac : public Object
     NrUeCmacSapProvider::RachConfig m_rachConfig; ///< RACH configuration
     uint8_t m_preambleTransmissionCounter{0};     ///< preamble transmission counter
     EventId m_noRaResponseReceivedEvent;          ///< no RA response received event ID
+
+    bool m_firstBSR;
 };
 
 } // namespace ns3

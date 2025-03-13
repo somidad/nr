@@ -425,6 +425,7 @@ NrUeMac::DoTransmitBufferStatusReport(NrMacSapProvider::BufferStatusReportParame
 
     if (m_srState == INACTIVE || (params.expBsrTimer && m_srState == ACTIVE))
     {
+        m_firstBSR = true;
         if (m_srState == INACTIVE)
         {
             NS_LOG_INFO("m_srState = INACTIVE -> TO_SEND, bufSize " << GetTotalBufSize());
@@ -772,9 +773,13 @@ NrUeMac::ProcessUlDci(const Ptr<NrUlDciMessage>& dciMsg)
 
         NS_LOG_INFO("After sending NewData, bufSize " << GetTotalBufSize());
 
-        // Send a new BSR. SendNewData() already took into account the size of
-        // the BSR.
-        SendBufferStatusReport(dataSfn, m_ulDci->m_symStart);
+        if (m_firstBSR)
+        {
+            // Send a new BSR. SendNewData() already took into account the size of
+            // the BSR.
+            SendBufferStatusReport(dataSfn, m_ulDci->m_symStart);
+            m_firstBSR = false;
+        }
 
         NS_LOG_INFO("UL DCI processing done, sent to PHY a total of "
                     << m_ulDciTotalUsed << " B out of " << m_ulDci->m_tbSize
@@ -784,6 +789,15 @@ NrUeMac::ProcessUlDci(const Ptr<NrUlDciMessage>& dciMsg)
         {
             m_srState = INACTIVE;
             NS_LOG_INFO("m_srState = ACTIVE -> INACTIVE, bufSize " << GetTotalBufSize());
+
+            m_macUeStateMachine(m_currentSlot,
+                                GetCellId(),
+                                m_rnti,
+                                GetBwpId(),
+                                m_srState,
+                                m_ulBsrReceived,
+                                m_ulDci->m_ndi,
+                                "ProcessUlDci");
 
             // the UE may have been scheduled, but we didn't use a single byte
             // of the allocation. So send an empty PDU. This happens because the
