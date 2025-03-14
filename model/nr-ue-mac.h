@@ -545,6 +545,7 @@ class NrUeMac : public Object
     EventId m_noRaResponseReceivedEvent;          ///< no RA response received event ID
 
     bool m_firstBSR;
+    bool m_newBSR = false;
 };
 
 } // namespace ns3

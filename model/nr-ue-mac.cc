@@ -773,12 +773,13 @@ NrUeMac::ProcessUlDci(const Ptr<NrUlDciMessage>& dciMsg)
 
         NS_LOG_INFO("After sending NewData, bufSize " << GetTotalBufSize());
 
-        if (m_firstBSR)
+        if (m_firstBSR || m_newBSR)
         {
             // Send a new BSR. SendNewData() already took into account the size of
             // the BSR.
             SendBufferStatusReport(dataSfn, m_ulDci->m_symStart);
             m_firstBSR = false;
+            m_newBSR = false;
         }
 
         NS_LOG_INFO("UL DCI processing done, sent to PHY a total of "
