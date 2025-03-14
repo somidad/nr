@@ -127,6 +127,7 @@ class UlSchedulingTest : public TestCase
     SfnSf m_lastSfnSf;
     std::string m_lastState;
     uint32_t m_txQueue;
+    uint32_t m_countHarq;
 };
 
 } // namespace ns3

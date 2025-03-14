@@ -171,6 +171,7 @@ UlSchedulingTest::UeMacStateMachine(
         // This behavior should be considered erroneous, as the UE is already in INACTIVE and should
         // be waiting to receive a new message instead.
         state = (funcName == "SendBufferStatusReport") ? "INACTIVE- Send BSR (ERROR)" : "INACTIVE";
+        m_countHarq = 0;
     }
     else if (srState == 1)
     {
@@ -180,15 +181,28 @@ UlSchedulingTest::UeMacStateMachine(
     {
         if (retxActive == 0)
         {
-            state =
-                (funcName == "DoTransmitBufferStatusReport") ? "ACTIVE(ReTxSR)" : "ACTIVE(HARQ)";
-            if (state == "ACTIVE(HARQ)")
+            state = (funcName == "DoTransmitBufferStatusReport") ? "ACTIVE(ReTxSR)" :
+                    (funcName == "SendBufferStatusReport") ? "ACTIVE(sendBSR)" :
+                    (funcName == "ProcessUlDci") ? "ACTIVE(grantRX - HARQ)" : "ERROR";
+
+            if (state == "ACTIVE(grantRX - HARQ)")
             {
                 Simulator::Schedule(grantRxTime,
                                     &UlSchedulingTest::CheckGrantRxState,
                                     this,
                                     sfn,
                                     rnti);
+                m_countHarq++;
+            }
+            else if (state == "ACTIVE(ReTxSR)")
+            {
+                if (0 < m_countHarq && m_countHarq < 3)
+                {
+                    NS_TEST_ASSERT_MSG_EQ(false,
+                                          true,
+                                          "An SR should not be retransmitted if all HARQ "
+                                          "retransmissions have not been completed.");
+                }
             }
         }
         else
@@ -231,7 +245,7 @@ UlSchedulingTest::CheckGrantRxState(SfnSf sfn, uint16_t rnti)
     {
         return;
     }
-    if ((m_lastState == "ACTIVE(sendBSR)" || m_lastState == "ACTIVE(HARQ)") && m_lastSfnSf == sfn &&
+    if ((m_lastState == "ACTIVE(sendBSR)" || m_lastState == "ACTIVE(grantRX - HARQ)") && m_lastSfnSf == sfn &&
         m_txQueue > 0)
     {
         file << m_lastSfnSf << "\t is stuck in " << m_lastState
@@ -242,11 +256,11 @@ UlSchedulingTest::CheckGrantRxState(SfnSf sfn, uint16_t rnti)
             "The UE remains stuck in the ACTIVE state because the gNB "
             "does not receive the BSR, blocking the UE from obtaining a grant to transmit data.");
     }
-    else
+    /*else
     {
         file << m_lastSfnSf << "\t current state is " << m_lastState << " last sfn = " << sfn
              << " and the bufSize is = " << m_txQueue << " \n";
-    }
+    }*/
 }
 
 std::ofstream
