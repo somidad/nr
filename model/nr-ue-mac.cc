@@ -126,7 +126,7 @@ class UeMemberNrMacSapProvider : public NrMacSapProvider
 
     // inherited from NrMacSapProvider
     void TransmitPdu(TransmitPduParameters params) override;
-    void ReportBufferStatus(ReportBufferStatusParameters params) override;
+    void BufferStatusReport(BufferStatusReportParameters params) override;
 
   private:
     NrUeMac* m_mac;
@@ -144,9 +144,9 @@ UeMemberNrMacSapProvider::TransmitPdu(TransmitPduParameters params)
 }
 
 void
-UeMemberNrMacSapProvider::ReportBufferStatus(ReportBufferStatusParameters params)
+UeMemberNrMacSapProvider::BufferStatusReport(BufferStatusReportParameters params)
 {
-    m_mac->DoReportBufferStatus(params);
+    m_mac->DoTransmitBufferStatusReport(params);
 }
 
 class NrUePhySapUser;
@@ -225,7 +225,11 @@ NrUeMac::GetTypeId()
             .AddTraceSource("RaResponseTimeout",
                             "Trace fired upon RA response timeout",
                             MakeTraceSourceAccessor(&NrUeMac::m_raResponseTimeoutTrace),
-                            "ns3::NrUeMac::RaResponseTimeoutTracedCallback");
+                            "ns3::NrUeMac::RaResponseTimeoutTracedCallback")
+            .AddTraceSource("UeMacStateMachineTrace",
+                            "UE MAC state machine trace",
+                            MakeTraceSourceAccessor(&NrUeMac::m_macUeStateMachine),
+                            "ns3::NrUeMac::UeMacStateMachineTracedCallback");
     return tid;
 }
 
@@ -401,7 +405,7 @@ NrUeMac::DoTransmitPdu(NrMacSapProvider::TransmitPduParameters params)
 }
 
 void
-NrUeMac::DoReportBufferStatus(NrMacSapProvider::ReportBufferStatusParameters params)
+NrUeMac::DoTransmitBufferStatusReport(NrMacSapProvider::BufferStatusReportParameters params)
 {
     NS_LOG_FUNCTION(this << static_cast<uint32_t>(params.lcid));
 
@@ -419,15 +423,40 @@ NrUeMac::DoReportBufferStatus(NrMacSapProvider::ReportBufferStatusParameters par
         it = m_ulBsrReceived.insert(std::make_pair(params.lcid, params)).first;
     }
 
-    if (m_srState == INACTIVE || (params.expRbsTimer && m_srState == ACTIVE))
+    if (m_srState == INACTIVE || (params.expBsrTimer && m_srState == ACTIVE))
     {
-        NS_LOG_INFO("INACTIVE -> TO_SEND, bufSize " << GetTotalBufSize());
+        m_firstBSR = true;
+        if (m_srState == INACTIVE)
+        {
+            NS_LOG_INFO("m_srState = INACTIVE -> TO_SEND, bufSize " << GetTotalBufSize());
+            m_macUeStateMachine(m_currentSlot,
+                                GetCellId(),
+                                m_rnti,
+                                GetBwpId(),
+                                m_srState,
+                                m_ulBsrReceived,
+                                1,
+                                "DoTransmitBufferStatusReport");
+        }
+        else
+        {
+            NS_LOG_INFO("m_srState = ACTIVE (BSR Timer expired) -> TO_SEND, bufSize "
+                        << GetTotalBufSize());
+            m_macUeStateMachine(m_currentSlot,
+                                GetCellId(),
+                                m_rnti,
+                                GetBwpId(),
+                                m_srState,
+                                m_ulBsrReceived,
+                                0,
+                                "DoTransmitBufferStatusReport");
+        }
         m_srState = TO_SEND;
     }
 }
 
 void
-NrUeMac::SendReportBufferStatus(const SfnSf& dataSfn, uint8_t symStart)
+NrUeMac::SendBufferStatusReport(const SfnSf& dataSfn, uint8_t symStart)
 {
     NS_LOG_FUNCTION(this);
 
@@ -447,7 +476,7 @@ NrUeMac::SendReportBufferStatus(const SfnSf& dataSfn, uint8_t symStart)
     bsr.m_macCeType = MacCeElement::BSR;
 
     // BSR is reported for each LCG
-    std::unordered_map<uint8_t, NrMacSapProvider::ReportBufferStatusParameters>::iterator it;
+    std::unordered_map<uint8_t, NrMacSapProvider::BufferStatusReportParameters>::iterator it;
     std::vector<uint32_t> queue(4, 0); // one value per each of the 4 LCGs, initialized to 0
     for (it = m_ulBsrReceived.begin(); it != m_ulBsrReceived.end(); it++)
     {
@@ -517,6 +546,15 @@ NrUeMac::SendReportBufferStatus(const SfnSf& dataSfn, uint8_t symStart)
                   "We used more data than the DCI allowed us.");
 
     m_phySapProvider->SendMacPdu(p, dataSfn, symStart, m_ulDci->m_rnti);
+
+    m_macUeStateMachine(m_currentSlot,
+                        GetCellId(),
+                        m_rnti,
+                        GetBwpId(),
+                        m_srState,
+                        m_ulBsrReceived,
+                        m_ulDci->m_ndi,
+                        "SendBufferStatusReport");
 }
 
 void
@@ -570,6 +608,15 @@ NrUeMac::DoSlotIndication(const SfnSf& sfn)
         NS_LOG_INFO("Sending SR to PHY in slot " << sfn);
         SendSR();
         m_srState = ACTIVE;
+        NS_LOG_INFO("m_srState = TO_SEND -> ACTIVE");
+        m_macUeStateMachine(m_currentSlot,
+                            GetCellId(),
+                            m_rnti,
+                            GetBwpId(),
+                            m_srState,
+                            m_ulBsrReceived,
+                            1,
+                            "DoSlotIndication");
     }
 
     // Feedback missing
@@ -700,19 +747,40 @@ NrUeMac::ProcessUlDci(const Ptr<NrUlDciMessage>& dciMsg)
     {
         // This method will retransmit the data saved in the harq buffer
         TransmitRetx();
+        m_macUeStateMachine(m_currentSlot,
+                            GetCellId(),
+                            m_rnti,
+                            GetBwpId(),
+                            m_srState,
+                            m_ulBsrReceived,
+                            m_ulDci->m_ndi,
+                            "ProcessUlDci");
 
         // This method will transmit a new BSR.
-        SendReportBufferStatus(dataSfn, m_ulDci->m_symStart);
+        SendBufferStatusReport(dataSfn, m_ulDci->m_symStart);
     }
     else if (m_ulDci->m_ndi == 1)
     {
         SendNewData();
+        m_macUeStateMachine(m_currentSlot,
+                            GetCellId(),
+                            m_rnti,
+                            GetBwpId(),
+                            m_srState,
+                            m_ulBsrReceived,
+                            m_ulDci->m_ndi,
+                            "ProcessUlDci");
 
         NS_LOG_INFO("After sending NewData, bufSize " << GetTotalBufSize());
 
-        // Send a new BSR. SendNewData() already took into account the size of
-        // the BSR.
-        SendReportBufferStatus(dataSfn, m_ulDci->m_symStart);
+        if (m_firstBSR || m_newBSR)
+        {
+            // Send a new BSR. SendNewData() already took into account the size of
+            // the BSR.
+            SendBufferStatusReport(dataSfn, m_ulDci->m_symStart);
+            m_firstBSR = false;
+            m_newBSR = false;
+        }
 
         NS_LOG_INFO("UL DCI processing done, sent to PHY a total of "
                     << m_ulDciTotalUsed << " B out of " << m_ulDci->m_tbSize
@@ -721,7 +789,16 @@ NrUeMac::ProcessUlDci(const Ptr<NrUlDciMessage>& dciMsg)
         if (GetTotalBufSize() == 0)
         {
             m_srState = INACTIVE;
-            NS_LOG_INFO("ACTIVE -> INACTIVE, bufSize " << GetTotalBufSize());
+            NS_LOG_INFO("m_srState = ACTIVE -> INACTIVE, bufSize " << GetTotalBufSize());
+
+            m_macUeStateMachine(m_currentSlot,
+                                GetCellId(),
+                                m_rnti,
+                                GetBwpId(),
+                                m_srState,
+                                m_ulBsrReceived,
+                                m_ulDci->m_ndi,
+                                "ProcessUlDci");
 
             // the UE may have been scheduled, but we didn't use a single byte
             // of the allocation. So send an empty PDU. This happens because the
