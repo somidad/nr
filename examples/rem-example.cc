@@ -97,10 +97,10 @@ main(int argc, char* argv[])
     // Antenna Parameters
     double hBS; // Depend on the scenario (no input parameters)
     double hUT;
-    uint32_t numRowsUe = 1;     // 2
-    uint32_t numColumnsUe = 1;  // 2
-    uint32_t numRowsGnb = 1;    // 4
-    uint32_t numColumnsGnb = 1; // 4
+    uint32_t numRowsUe = 1;      // 2
+    uint32_t numColumnsUe = 1;   // 2
+    uint32_t numRowsGnb = 32;    // 4
+    uint32_t numColumnsGnb = 32; // 4
     bool isoUe = true;
     bool isoGnb = false; // false
 
@@ -543,8 +543,12 @@ main(int argc, char* argv[])
     remHelper->SetMinY(yMin);
     remHelper->SetMaxY(yMax);
     remHelper->SetResY(yRes);
-    remHelper->SetZ(z);
+    remHelper->SetMinZ(z);
+    remHelper->SetMaxZ(30);
+    remHelper->SetResZ(10);
     remHelper->SetSimTag(simTag);
+    remHelper->SetRemMode(NrRadioEnvironmentMapHelper::BEAM_SHAPE);
+    remHelper->SetRemMode(NrRadioEnvironmentMapHelper::BEAM_SHAPE);
 
     gnbNetDev.Get(0)
         ->GetObject<NrGnbNetDevice>()

@@ -788,7 +788,9 @@ LenaLteComparison(const Parameters& params)
         remHelper->SetMinY(params.yMinRem);
         remHelper->SetMaxY(params.yMaxRem);
         remHelper->SetResY(params.yResRem);
-        remHelper->SetZ(params.zRem);
+        remHelper->SetMinZ(params.zRem);
+        remHelper->SetMaxZ(params.zRem + 1);
+        remHelper->SetResZ(1);
 
         // save beamforming vectors, one per site (?)
         for (uint32_t sector = sectors; sector > 0; --sector)

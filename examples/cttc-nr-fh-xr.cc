@@ -1995,7 +1995,9 @@ main(int argc, char* argv[])
         remHelper->SetMinY(yMinRem);
         remHelper->SetMaxY(yMaxRem);
         remHelper->SetResY(yResRem);
-        remHelper->SetZ(zRem);
+        remHelper->SetMinZ(zRem);
+        remHelper->SetMaxZ(zRem + 1);
+        remHelper->SetResZ(1);
 
         // save beamforming vectors, one per site (?)
         for (uint32_t sector = sectors; sector > 0; --sector)

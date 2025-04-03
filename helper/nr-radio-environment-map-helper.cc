@@ -78,6 +78,12 @@ NrRadioEnvironmentMapHelper::GetTypeId()
                           MakeDoubleAccessor(&NrRadioEnvironmentMapHelper::SetMinY,
                                              &NrRadioEnvironmentMapHelper::GetMinY),
                           MakeDoubleChecker<double>())
+            .AddAttribute("ZMin",
+                          "The min z coordinate of the map.",
+                          DoubleValue(1.5),
+                          MakeDoubleAccessor(&NrRadioEnvironmentMapHelper::SetMinZ,
+                                             &NrRadioEnvironmentMapHelper::GetMinZ),
+                          MakeDoubleChecker<double>())
             .AddAttribute("XMax",
                           "The max x coordinate of the map.",
                           DoubleValue(0.0),
@@ -89,6 +95,12 @@ NrRadioEnvironmentMapHelper::GetTypeId()
                           DoubleValue(0.0),
                           MakeDoubleAccessor(&NrRadioEnvironmentMapHelper::SetMaxY,
                                              &NrRadioEnvironmentMapHelper::GetMaxY),
+                          MakeDoubleChecker<double>())
+            .AddAttribute("ZMax",
+                          "The max z coordinate of the map.",
+                          DoubleValue(1.5),
+                          MakeDoubleAccessor(&NrRadioEnvironmentMapHelper::SetMaxZ,
+                                             &NrRadioEnvironmentMapHelper::GetMaxZ),
                           MakeDoubleChecker<double>())
             .AddAttribute("XRes",
                           "The resolution (number of points) of the"
@@ -104,13 +116,13 @@ NrRadioEnvironmentMapHelper::GetTypeId()
                           MakeUintegerAccessor(&NrRadioEnvironmentMapHelper::SetResY,
                                                &NrRadioEnvironmentMapHelper::GetResY),
                           MakeUintegerChecker<uint16_t>(2, std::numeric_limits<uint16_t>::max()))
-            .AddAttribute("Z",
-                          "The value of the z coordinate for which"
-                          "the map is to be generated.",
-                          DoubleValue(1.5),
-                          MakeDoubleAccessor(&NrRadioEnvironmentMapHelper::SetZ,
-                                             &NrRadioEnvironmentMapHelper::GetZ),
-                          MakeDoubleChecker<double>())
+            .AddAttribute("ZRes",
+                          "The resolution (number of points) of the"
+                          "map along the z axis.",
+                          UintegerValue(1),
+                          MakeUintegerAccessor(&NrRadioEnvironmentMapHelper::SetResZ,
+                                               &NrRadioEnvironmentMapHelper::GetResZ),
+                          MakeUintegerChecker<uint16_t>(1, std::numeric_limits<uint16_t>::max()))
             .AddAttribute("IterForAverage",
                           "Number of iterations for the calculation"
                           "of the average rem value.",
@@ -180,6 +192,12 @@ NrRadioEnvironmentMapHelper::SetMinY(double yMin)
 }
 
 void
+NrRadioEnvironmentMapHelper::SetMinZ(double zMin)
+{
+    m_zMin = zMin;
+}
+
+void
 NrRadioEnvironmentMapHelper::SetMaxX(double xMax)
 {
     m_xMax = xMax;
@@ -189,6 +207,12 @@ void
 NrRadioEnvironmentMapHelper::SetMaxY(double yMax)
 {
     m_yMax = yMax;
+}
+
+void
+NrRadioEnvironmentMapHelper::SetMaxZ(double zMax)
+{
+    m_zMax = zMax;
 }
 
 void
@@ -204,9 +228,9 @@ NrRadioEnvironmentMapHelper::SetResY(uint16_t yRes)
 }
 
 void
-NrRadioEnvironmentMapHelper::SetZ(double z)
+NrRadioEnvironmentMapHelper::SetResZ(uint16_t zRes)
 {
-    m_z = z;
+    m_zRes = zRes;
 }
 
 void
@@ -240,6 +264,12 @@ NrRadioEnvironmentMapHelper::GetMinY() const
 }
 
 double
+NrRadioEnvironmentMapHelper::GetMinZ() const
+{
+    return m_zMin;
+}
+
+double
 NrRadioEnvironmentMapHelper::GetMaxX() const
 {
     return m_xMax;
@@ -249,6 +279,12 @@ double
 NrRadioEnvironmentMapHelper::GetMaxY() const
 {
     return m_yMax;
+}
+
+double
+NrRadioEnvironmentMapHelper::GetMaxZ() const
+{
+    return m_zMax;
 }
 
 uint16_t
@@ -263,10 +299,10 @@ NrRadioEnvironmentMapHelper::GetResY() const
     return m_yRes;
 }
 
-double
-NrRadioEnvironmentMapHelper::GetZ() const
+uint16_t
+NrRadioEnvironmentMapHelper::GetResZ() const
 {
-    return m_z;
+    return m_zRes;
 }
 
 double
@@ -627,14 +663,17 @@ NrRadioEnvironmentMapHelper::CreateListOfRemPoints()
 {
     NS_LOG_FUNCTION(this);
 
-    // Create the list of the REM Points
+    // Create the vector of the REM Points
 
     m_xStep = (m_xMax - m_xMin) / (m_xRes);
     m_yStep = (m_yMax - m_yMin) / (m_yRes);
+    m_zStep = (m_zMax - m_zMin) / (m_zRes);
+    m_zStep = (m_zStep == 0) ? 1 : m_zStep;
 
     NS_ASSERT_MSG(m_xMax > m_xMin, "xMax must be higher than xMin");
     NS_ASSERT_MSG(m_yMax > m_yMin, "yMax must be higher than yMin");
-    NS_ASSERT_MSG(m_xRes != 0 || m_yRes != 0, "Resolution must be higher than 0");
+    NS_ASSERT_MSG(m_zMax >= m_zMin, "zMax must be equal or higher than zMin");
+    NS_ASSERT_MSG(m_xRes != 0 || m_yRes != 0 || m_zRes != 0, "Resolution must be higher than 0");
 
     NS_LOG_INFO("m_xStep: " << m_xStep << " m_yStep: " << m_yStep);
 
@@ -642,25 +681,28 @@ NrRadioEnvironmentMapHelper::CreateListOfRemPoints()
     {
         for (double y = m_yMin; y < m_yMax + 0.5 * m_yStep; y += m_yStep)
         {
-            // In case a REM Point is in the same position as a rtd, ignore this point
-            bool isPositionRtd = false;
-            for (auto& itRtd : m_remDev)
+            for (double z = m_zMin; z < m_zMax + 0.5 * m_zStep; z += m_zStep)
             {
-                if (itRtd.mob->GetPosition() == Vector(x, y, m_z))
+                // In case a REM Point is in the same position as a rtd, ignore this point
+                bool isPositionRtd = false;
+                for (auto& itRtd : m_remDev)
                 {
-                    isPositionRtd = true;
+                    if (itRtd.mob->GetPosition() == Vector(x, y, z))
+                    {
+                        isPositionRtd = true;
+                    }
                 }
-            }
 
-            if (!isPositionRtd)
-            {
-                RemPoint remPoint;
+                if (!isPositionRtd)
+                {
+                    RemPoint remPoint;
 
-                remPoint.pos.x = x;
-                remPoint.pos.y = y;
-                remPoint.pos.z = m_z;
+                    remPoint.pos.x = x;
+                    remPoint.pos.y = y;
+                    remPoint.pos.z = z;
 
-                m_rem.push_back(remPoint);
+                    m_rem.push_back(remPoint);
+                }
             }
         }
     }
@@ -753,10 +795,10 @@ NrRadioEnvironmentMapHelper::CalcRxPsdValue(RemDevice& device, RemDevice& otherD
 }
 
 Ptr<SpectrumValue>
-NrRadioEnvironmentMapHelper::GetMaxValue(const std::list<Ptr<SpectrumValue>>& values) const
+NrRadioEnvironmentMapHelper::GetMaxValue(const std::vector<Ptr<SpectrumValue>>& values) const
 {
     // TODO add this abort, if necessary add include for abort.h
-    NS_ABORT_MSG_IF(values.empty(), "Must provide a list of values.");
+    NS_ABORT_MSG_IF(values.empty(), "Must provide a vector of values.");
 
     Ptr<SpectrumValue> maxValue = Create<SpectrumValue>(m_rrd.spectrumModel);
     *maxValue = **(values.begin());
@@ -773,7 +815,7 @@ NrRadioEnvironmentMapHelper::GetMaxValue(const std::list<Ptr<SpectrumValue>>& va
 
 double
 NrRadioEnvironmentMapHelper::CalculateMaxSnr(
-    const std::list<Ptr<SpectrumValue>>& receivedPowerList) const
+    const std::vector<Ptr<SpectrumValue>>& receivedPowerList) const
 {
     Ptr<SpectrumValue> maxSnr = GetMaxValue(receivedPowerList);
     SpectrumValue snr = (*maxSnr) / (*m_noisePsd);
@@ -791,7 +833,7 @@ NrRadioEnvironmentMapHelper::CalculateSnr(const Ptr<SpectrumValue>& usefulSignal
 double
 NrRadioEnvironmentMapHelper::CalculateSinr(
     const Ptr<SpectrumValue>& usefulSignal,
-    const std::list<Ptr<SpectrumValue>>& interferenceSignals) const
+    const std::vector<Ptr<SpectrumValue>>& interferenceSignals) const
 {
     Ptr<SpectrumValue> interferencePsd = nullptr;
 
@@ -820,7 +862,7 @@ NrRadioEnvironmentMapHelper::CalculateSinr(
 double
 NrRadioEnvironmentMapHelper::CalculateSir(
     const Ptr<SpectrumValue>& usefulSignal,
-    const std::list<Ptr<SpectrumValue>>& interferenceSignals) const
+    const std::vector<Ptr<SpectrumValue>>& interferenceSignals) const
 {
     Ptr<SpectrumValue> interferencePsd = nullptr;
 
@@ -850,19 +892,19 @@ NrRadioEnvironmentMapHelper::CalculateSir(
 
 double
 NrRadioEnvironmentMapHelper::CalculateMaxSinr(
-    const std::list<Ptr<SpectrumValue>>& receivedPowerList) const
+    const std::vector<Ptr<SpectrumValue>>& receivedPowerList) const
 {
     // we calculate sinr considering for each RTD as if it would be TX device, and the rest of RTDs
     // interferers
-    std::list<double> sinrList;
+    std::vector<double> sinrList;
 
-    for (std::list<Ptr<SpectrumValue>>::const_iterator it = receivedPowerList.begin();
+    for (std::vector<Ptr<SpectrumValue>>::const_iterator it = receivedPowerList.begin();
          it != receivedPowerList.end();
          it++)
     {
         // all signals - rxPower = interference
-        std::list<Ptr<SpectrumValue>> interferenceSignals;
-        std::list<Ptr<SpectrumValue>>::const_iterator tempit = it;
+        std::vector<Ptr<SpectrumValue>> interferenceSignals;
+        std::vector<Ptr<SpectrumValue>>::const_iterator tempit = it;
 
         if (it != receivedPowerList.begin())
         {
@@ -878,19 +920,19 @@ NrRadioEnvironmentMapHelper::CalculateMaxSinr(
 
 double
 NrRadioEnvironmentMapHelper::CalculateMaxSir(
-    const std::list<Ptr<SpectrumValue>>& receivedPowerList) const
+    const std::vector<Ptr<SpectrumValue>>& receivedPowerList) const
 {
     // we calculate sinr considering for each RTD as if it would be TX device, and the rest of RTDs
     // interferers
-    std::list<double> sirList;
+    std::vector<double> sirList;
 
-    for (std::list<Ptr<SpectrumValue>>::const_iterator it = receivedPowerList.begin();
+    for (std::vector<Ptr<SpectrumValue>>::const_iterator it = receivedPowerList.begin();
          it != receivedPowerList.end();
          it++)
     {
         // all signals - rxPower = interference
-        std::list<Ptr<SpectrumValue>> interferenceSignals;
-        std::list<Ptr<SpectrumValue>>::const_iterator tempit = it;
+        std::vector<Ptr<SpectrumValue>> interferenceSignals;
+        std::vector<Ptr<SpectrumValue>>::const_iterator tempit = it;
 
         if (it != receivedPowerList.begin())
         {
@@ -912,15 +954,15 @@ NrRadioEnvironmentMapHelper::CalcBeamShapeRemMap()
     uint32_t remSizeNextReport = m_rem.size() / 100;
     uint32_t remPointCounter = 0;
 
-    for (std::list<RemPoint>::iterator itRemPoint = m_rem.begin(); itRemPoint != m_rem.end();
+    for (std::vector<RemPoint>::iterator itRemPoint = m_rem.begin(); itRemPoint != m_rem.end();
          ++itRemPoint)
     {
         // perform calculation m_numOfIterationsToAverage times and get the average value
         double sumSnr = 0.0;
         double sumSinr = 0.0;
         double sumSir = 0.0;
-        std::list<double> rxPsdsListPerIt; // list to save the summed rxPower in each RemPoint for
-                                           // each Iteration (linear)
+        // vector to save the summed rxPower in each RemPoint for each Iteration (linear)
+        std::vector<double> rxPsdsListPerIt(m_numOfIterationsToAverage);
         m_rrd.mob->SetPosition(itRemPoint->pos);
 
         Ptr<MobilityBuildingInfo> buildingInfo = m_rrd.mob->GetObject<MobilityBuildingInfo>();
@@ -929,24 +971,22 @@ NrRadioEnvironmentMapHelper::CalcBeamShapeRemMap()
 
         for (uint16_t i = 0; i < m_numOfIterationsToAverage; i++)
         {
-            std::list<Ptr<SpectrumValue>>
-                receivedPowerList; // RTD node id, rxPsd of the signal coming from that node
+            // RTD node id, rxPsd of the signal coming from that node
+            std::vector<Ptr<SpectrumValue>> receivedPowerList(m_remDev.size());
 
-            for (auto& itRtd : m_remDev)
+            for (size_t j = 0; j < receivedPowerList.size(); j++)
             {
                 // calculate received power from the current RTD device
-                receivedPowerList.push_back(CalcRxPsdValue(itRtd, m_rrd));
-            } // end for std::list<RemDev>::iterator  (RTDs)
+                receivedPowerList.at(j) = CalcRxPsdValue(m_remDev.at(j), m_rrd);
+            } // end for std::vector<RemDev>::iterator  (RTDs)
 
             sumSnr += CalculateMaxSnr(receivedPowerList);
             sumSinr += CalculateMaxSinr(receivedPowerList);
             sumSir += CalculateMaxSir(receivedPowerList);
 
-            // Sum all the rxPowers (for this RemPoint) and put the result to the list for each
+            // Sum all the rxPowers (for this RemPoint) and put the result to the vector for each
             // Iteration (linear)
-            rxPsdsListPerIt.push_back(CalculateAggregatedIpsd(receivedPowerList));
-
-            receivedPowerList.clear();
+            rxPsdsListPerIt.at(i) = CalculateAggregatedIpsd(receivedPowerList);
         } // end for m_numOfIterationsToAverage  (Average)
 
         // Sum the rxPower for all the Iterations (linear)
@@ -968,7 +1008,7 @@ NrRadioEnvironmentMapHelper::CalcBeamShapeRemMap()
             PrintProgressReport(&remSizeNextReport);
         }
 
-    } // end for std::list<RemPoint>::iterator  (RemPoints)
+    } // end for std::vector<RemPoint>::iterator  (RemPoints)
 
     auto remEndTime = std::chrono::system_clock::now();
     std::chrono::duration<double> remElapsedSeconds = remEndTime - m_remStartTime;
@@ -977,11 +1017,11 @@ NrRadioEnvironmentMapHelper::CalcBeamShapeRemMap()
 }
 
 double
-NrRadioEnvironmentMapHelper::GetMaxValue(const std::list<double>& listOfValues) const
+NrRadioEnvironmentMapHelper::GetMaxValue(const std::vector<double>& listOfValues) const
 {
     NS_ABORT_MSG_IF(listOfValues.empty(),
                     "GetMaxValue should not be called "
-                    "with an empty list.");
+                    "with an empty vector.");
 
     double maxValue = *(listOfValues.begin());
     // start from second element, the first is already taken into account
@@ -997,7 +1037,7 @@ NrRadioEnvironmentMapHelper::GetMaxValue(const std::list<double>& listOfValues) 
 
 double
 NrRadioEnvironmentMapHelper::CalculateAggregatedIpsd(
-    const std::list<Ptr<SpectrumValue>>& receivedSignals)
+    const std::vector<Ptr<SpectrumValue>>& receivedSignals)
 {
     Ptr<SpectrumValue> sumRxPowers = nullptr;
     sumRxPowers = Create<SpectrumValue>(m_rrd.spectrumModel);
@@ -1014,11 +1054,11 @@ NrRadioEnvironmentMapHelper::CalculateAggregatedIpsd(
 }
 
 double
-NrRadioEnvironmentMapHelper::SumListElements(const std::list<double>& listOfValues)
+NrRadioEnvironmentMapHelper::SumListElements(const std::vector<double>& listOfValues)
 {
     NS_ABORT_MSG_IF(listOfValues.empty(),
                     "SumListElements should not be called "
-                    "with an empty list.");
+                    "with an empty vector.");
 
     double sum = 0;
 
@@ -1037,7 +1077,7 @@ NrRadioEnvironmentMapHelper::CalcCoverageAreaRemMap()
     uint32_t remSizeNextReport = m_rem.size() / 100;
     uint32_t remPointCounter = 0;
 
-    for (std::list<RemPoint>::iterator itRemPoint = m_rem.begin(); itRemPoint != m_rem.end();
+    for (std::vector<RemPoint>::iterator itRemPoint = m_rem.begin(); itRemPoint != m_rem.end();
          ++itRemPoint)
     {
         // perform calculation m_numOfIterationsToAverage times and get the average value
@@ -1052,20 +1092,20 @@ NrRadioEnvironmentMapHelper::CalcCoverageAreaRemMap()
             ConfigureDirectPathBfv(itRtd, m_rrd, itRtd.antenna);
         }
 
-        std::list<double> rxPsdsListPerIt; // list to save the summed rxPower in each RemPoint for
-                                           // each Iteration (linear)
+        std::vector<double> rxPsdsListPerIt; // vector to save the summed rxPower in each RemPoint
+                                             // for each Iteration (linear)
 
         for (uint16_t i = 0; i < m_numOfIterationsToAverage; i++)
         {
-            std::list<double> sinrsPerBeam; // vector in which we will save sinr per each RRD beam
-            std::list<double> snrsPerBeam;  // vector in which we will save snr per each RRD beam
+            std::vector<double> sinrsPerBeam; // vector in which we will save sinr per each RRD beam
+            std::vector<double> snrsPerBeam;  // vector in which we will save snr per each RRD beam
 
-            std::list<Ptr<SpectrumValue>> rxPsdsList; // vector in which we will save the sum of
-                                                      // rxPowers per remPoint (linear)
+            std::vector<Ptr<SpectrumValue>> rxPsdsList; // vector in which we will save the sum of
+                                                        // rxPowers per remPoint (linear)
 
             // For each beam configuration at RemPoint/RRD we should calculate SINR, there are as
             // many beam configurations at RemPoint as many RTDs
-            for (std::list<RemDevice>::iterator itRtdBeam = m_remDev.begin();
+            for (std::vector<RemDevice>::iterator itRtdBeam = m_remDev.begin();
                  itRtdBeam != m_remDev.end();
                  ++itRtdBeam)
             {
@@ -1074,7 +1114,7 @@ NrRadioEnvironmentMapHelper::CalcCoverageAreaRemMap()
 
                 // Calculate the received power from this RTD for this RemPoint
                 Ptr<SpectrumValue> receivedPowerFromRtd = CalcRxPsdValue(*itRtdBeam, m_rrd);
-                // and put it to the list of the received powers for this RemPoint (to sum all
+                // and put it to the vector of the received powers for this RemPoint (to sum all
                 // later)
                 rxPsdsList.push_back(receivedPowerFromRtd);
 
@@ -1083,7 +1123,7 @@ NrRadioEnvironmentMapHelper::CalcCoverageAreaRemMap()
                                            << (Integral(*receivedPowerFromRtd)));
                 NS_LOG_DEBUG("RxPower in dBm: " << WToDbm(Integral(*receivedPowerFromRtd)));
 
-                std::list<Ptr<SpectrumValue>> interferenceSignalsRxPsds;
+                std::vector<Ptr<SpectrumValue>> interferenceSignalsRxPsds;
                 Ptr<SpectrumValue> usefulSignalRxPsd;
 
                 // For this configuration of beam at RRD, we need to calculate RX PSD,
@@ -1112,7 +1152,7 @@ NrRadioEnvironmentMapHelper::CalcCoverageAreaRemMap()
                         interferenceSignalsRxPsds.push_back(receivedPower); // interference
                     }
 
-                } // end for std::list<RemDev>::iterator itRtdCalc (RTDs)
+                } // end for std::vector<RemDev>::iterator itRtdCalc (RTDs)
 
                 sinrsPerBeam.push_back(CalculateSinr(usefulSignalRxPsd, interferenceSignalsRxPsds));
                 snrsPerBeam.push_back(CalculateSnr(usefulSignalRxPsd));
@@ -1123,12 +1163,12 @@ NrRadioEnvironmentMapHelper::CalcCoverageAreaRemMap()
                                            100
                                     << " %."); // how many times will be called CalcRxPsdValues
 
-            } // end for std::list<RemDev>::iterator itRtdBeam (RTDs)
+            } // end for std::vector<RemDev>::iterator itRtdBeam (RTDs)
 
             sumSnr += GetMaxValue(snrsPerBeam);
             sumSinr += GetMaxValue(sinrsPerBeam);
 
-            // Sum all the rxPowers (for this RemPoint) and put the result to the list for each
+            // Sum all the rxPowers (for this RemPoint) and put the result to the vector for each
             // Iteration (linear)
             rxPsdsListPerIt.push_back(CalculateAggregatedIpsd(rxPsdsList));
 
@@ -1150,7 +1190,7 @@ NrRadioEnvironmentMapHelper::CalcCoverageAreaRemMap()
 
         NS_LOG_DEBUG("itRemPoint->avRxPowerDb  in dB: " << itRemPoint->avRxPowerDbm);
 
-    } // end for std::list<RemPoint>::iterator  (RemPoints)
+    } // end for std::vector<RemPoint>::iterator  (RemPoints)
 
     auto remEndTime = std::chrono::system_clock::now();
     std::chrono::duration<double> remElapsedSeconds = remEndTime - m_remStartTime;
@@ -1198,8 +1238,8 @@ NrRadioEnvironmentMapHelper::CalcUeCoverageRemMap()
 
         for (uint16_t i = 0; i < m_numOfIterationsToAverage; i++)
         {
-            std::list<double> sinrsPerBeam; // vector in which we will save sinr per each RRD beam
-            std::list<double> snrsPerBeam;  // vector in which we will save snr per each RRD beam
+            std::vector<double> sinrsPerBeam; // vector in which we will save sinr per each RRD beam
+            std::vector<double> snrsPerBeam;  // vector in which we will save snr per each RRD beam
 
             //"Associate" UE (RemPoint) with this RTD
             for (auto& itRtdAssociated : m_remDev)
@@ -1209,7 +1249,7 @@ NrRadioEnvironmentMapHelper::CalcUeCoverageRemMap()
                 // configure RTD (itRtdAssociated) beam toward RRD (RemPoint)
                 ConfigureDirectPathBfv(itRtdAssociated, m_rrd, itRtdAssociated.antenna);
 
-                std::list<Ptr<SpectrumValue>> interferenceSignalsRxPsds;
+                std::vector<Ptr<SpectrumValue>> interferenceSignalsRxPsds;
                 Ptr<SpectrumValue> usefulSignalRxPsd;
 
                 for (auto& itRtdInterferer : m_remDev)
@@ -1239,12 +1279,12 @@ NrRadioEnvironmentMapHelper::CalcUeCoverageRemMap()
                         usefulSignalRxPsd = receivedPower;
                     }
 
-                } // end for std::list<RemDev>::iterator itRtdInterferer (RTD)
+                } // end for std::vector<RemDev>::iterator itRtdInterferer (RTD)
 
                 sinrsPerBeam.push_back(CalculateSinr(usefulSignalRxPsd, interferenceSignalsRxPsds));
                 snrsPerBeam.push_back(CalculateSnr(usefulSignalRxPsd));
 
-            } // end for std::list<RemDev>::iterator itRtdAssociated (RTD)
+            } // end for std::vector<RemDev>::iterator itRtdAssociated (RTD)
 
             sumSnr += GetMaxValue(snrsPerBeam);
             sumSinr += GetMaxValue(sinrsPerBeam);
@@ -1259,7 +1299,7 @@ NrRadioEnvironmentMapHelper::CalcUeCoverageRemMap()
             PrintProgressReport(&remSizeNextReport);
         }
 
-    } // end for std::list<RemPoint>::iterator  (RemPoints)
+    } // end for std::vector<RemPoint>::iterator  (RemPoints)
 
     auto remEndTime = std::chrono::system_clock::now();
     std::chrono::duration<double> remElapsedSeconds = remEndTime - m_remStartTime;
