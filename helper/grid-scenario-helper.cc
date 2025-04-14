@@ -30,15 +30,10 @@ GridScenarioHelper::~GridScenarioHelper()
 }
 
 void
-GridScenarioHelper::SetHorizontalBsDistance(double d)
-{
-    m_horizontalBsDistance = d;
-}
+GridScenarioHelper::SetBsDistance(double hDistance, double vDistance){
+    m_horizontalBsDistance = hDistance;
 
-void
-GridScenarioHelper::SetVerticalBsDistance(double d)
-{
-    m_verticalBsDistance = d;
+    m_verticalBsDistance = vDistance;    
 }
 
 void
@@ -54,22 +49,19 @@ GridScenarioHelper::SetColumns(uint32_t c)
 }
 
 void
-GridScenarioHelper::SetStartingPosition(const Vector& initialPos)
+GridScenarioHelper::SetBsPositionOffset(const Vector& initialPos)
 {
     m_initialPos = initialPos;
 }
 
-void
-GridScenarioHelper::SetScenarioLength(double m)
-{
-    m_length = m;
+void 
+GridScenarioHelper::SetGridSize(double maxDistanceX, double maxDistanceY){
+    
+    m_maxDistanceX = maxDistanceX;
+
+    m_maxDistanceY = maxDistanceY;
 }
 
-void
-GridScenarioHelper::SetScenarioHeight(double m)
-{
-    m_height = m;
-}
 
 void
 GridScenarioHelper::CreateScenario()
@@ -116,9 +108,9 @@ GridScenarioHelper::CreateScenario()
     }
 
     m_x->SetAttribute("Min", DoubleValue(0.0));
-    m_x->SetAttribute("Max", DoubleValue(m_length));
+    m_x->SetAttribute("Max", DoubleValue(m_maxDistanceX));
     m_y->SetAttribute("Min", DoubleValue(0.0));
-    m_y->SetAttribute("Max", DoubleValue(m_height));
+    m_y->SetAttribute("Max", DoubleValue(m_maxDistanceY));
     // UT position
     if (m_ut.GetN() > 0)
     {
