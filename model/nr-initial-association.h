@@ -58,7 +58,8 @@ class NrInitialAssociation : public Object
     {
         Ptr<UniformPlanarArray> gnbArrayModel{
             nullptr}; ///< Copy of gNB antenna array model. Modified to reduce complexity
-        Ptr<UniformPlanarArray> ueArrayModel{nullptr}; ///< Copy of UE antenna array model
+        std::vector<Ptr<UniformPlanarArray>>
+            ueArrayModel; ///< Copy of UE antenna panels' array model
     };
 
     /// @brief LocalSearchParams struct
@@ -68,6 +69,7 @@ class NrInitialAssociation : public Object
         ChannelParams chParams;
         Mobilities mobility;
         AntennaArrayModels antennaArrays;
+        double maxPsdFound = 0.0;
     };
 
     /// @brief Check whether number of beams is corresponds to standard
@@ -197,6 +199,14 @@ class NrInitialAssociation : public Object
     /// @brief Get RSRP of associated gNB
     /// @return RSRP
     double GetAssociatedRsrp() const;
+
+    /// @brief Set the active panel for the UE device in NrSpectrumPhy
+    /// @param panelIndex Index of panel to be active
+    void SetUeActivePanel(int8_t panelIndex) const;
+
+    /// @brief Get the index of the active panel for the UE device in NrSpectrumPhy
+    /// @return panelIndex
+    uint8_t GetUeActivePanel() const;
 
     /// @brief Set the primary BWP or carrier
     /// @param index
