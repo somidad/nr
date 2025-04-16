@@ -110,6 +110,8 @@ class NrGnbMac : public Object
      */
     virtual uint8_t GetUlCtrlSyms() const;
 
+    virtual bool IsHarqReTxEnable() const;
+
     /**
      * @brief Perform DL scheduling decision for the indicated slot
      * @param sfnSf the slot to fill with scheduling decisions
@@ -285,7 +287,7 @@ class NrGnbMac : public Object
     virtual void DoSchedConfigIndication(NrMacSchedSapUser::SchedConfigIndParameters ind);
     // forwarded from NrMacSapProvider
     void DoTransmitPdu(NrMacSapProvider::TransmitPduParameters);
-    void DoReportBufferStatus(NrMacSapProvider::ReportBufferStatusParameters);
+    void DoTransmitBufferStatusReport(NrMacSapProvider::BufferStatusReportParameters);
     void DoUlCqiReport(NrMacSchedSapProvider::SchedUlCqiInfoReqParameters ulcqi);
     // forwarded from NrMacCchedSapUser
     void DoCschedCellConfigCnf(NrMacCschedSapUser::CschedCellConfigCnfParameters params);
